@@ -7,12 +7,10 @@ from prontuario_backend.main import app
 client = TestClient(app, base_url="http://localhost")
 
 
-def test_health_uses_sql(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
+def test_health_uses_sql(mysql_url):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "database": "ok"}
-    assert (tmp_path / "test.db").exists()
 
 
 def test_protected_route_requires_token():

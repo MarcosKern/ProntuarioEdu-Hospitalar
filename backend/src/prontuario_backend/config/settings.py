@@ -9,7 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     app_env: Literal["development", "test", "production"] = "development"
-    database_url: SecretStr = SecretStr("sqlite:///./data/development.db")
+    database_url: SecretStr
+    mysql_ssl_ca: str = ""
     redis_url: SecretStr | None = None
     allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
     cors_origins: list[str] = []
@@ -30,9 +31,9 @@ class Settings(BaseSettings):
         for url in (self.oidc_issuer, self.oidc_jwks_url, self.oidc_authorization_url, self.oidc_token_url):
             if url and (urlsplit(url).scheme != "https" or not urlsplit(url).hostname):
                 raise ValueError("OIDC requires HTTPS")
+        if not self.database_url.get_secret_value().startswith("mysql+pymysql://"):
+            raise ValueError("MySQL with PyMySQL is required")
         if self.app_env == "production":
-            if not self.database_url.get_secret_value().startswith("postgresql+psycopg://"):
-                raise ValueError("Production requires PostgreSQL")
             if not self.redis_url or not all((self.oidc_issuer, self.oidc_audience, self.oidc_jwks_url, self.oidc_authorization_url, self.oidc_token_url)):
                 raise ValueError("Production requires Redis and OIDC")
             if any(not origin.startswith("https://") for origin in self.cors_origins):

@@ -1,5 +1,4 @@
 from functools import lru_cache
-from pathlib import Path
 
 from prontuario_backend.config.settings import get_settings
 from sqlalchemy import create_engine, text
@@ -12,10 +11,12 @@ class Base(DeclarativeBase):
 
 @lru_cache(maxsize=4)
 def engine_for(url):
-    if url.startswith("sqlite:///./"):
-        Path(url.removeprefix("sqlite:///./")).parent.mkdir(parents=True, exist_ok=True)
-    kwargs = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite") else {}
-    return create_engine(url, pool_pre_ping=True, hide_parameters=True, **kwargs)
+    options = {"connect_timeout": 5, "init_command": "SET time_zone = '+00:00'"}
+    ca = get_settings().mysql_ssl_ca
+    if ca:
+        options["ssl"] = {"ca": ca, "check_hostname": True}
+    return create_engine(url, pool_pre_ping=True, hide_parameters=True, connect_args=options)
+
 
 
 def engine():

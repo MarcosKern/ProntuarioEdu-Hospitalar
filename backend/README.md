@@ -1,5 +1,8 @@
 # Back-end Python com MVC
 
+> **Banco padrão: MySQL externo.** Configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há banco local ou fallback.
+
+
 O Back-end usará MVC para facilitar a leitura e a divisão do trabalho de uma turma intermediária. Continua sendo um único servidor para Desktop, Web e futuras integrações. MVC organiza o código; não exige dividir o servidor em serviços.
 
 ## Quem faz o quê
@@ -93,11 +96,11 @@ Rotas e esquemas de entrada/saída alimentam o OpenAPI, apresentado pelo Swagger
 
 Em `tests/unit/`, validar texto vazio, coordenação e respostas. Em `tests/integration/`, verificar acesso negado sem gravação e persistência/transação no banco de teste. Em `tests/contract/`, verificar respostas e OpenAPI. A seção de ambiente descreve os testes iniciais implementados; os testes do exemplo clínico continuam futuros.
 
-As instruções abaixo descrevem o ambiente inicial implementado com FastAPI, SQLAlchemy e SQLite. O provedor real de autenticação ainda precisa ser configurado.
+As instruções abaixo descrevem o ambiente inicial implementado com FastAPI, SQLAlchemy e MySQL. O provedor real de autenticação ainda precisa ser configurado.
 
 ## Ambiente de desenvolvimento e segurança
 
-FastAPI, SQLAlchemy, PostgreSQL, Alembic, OAuth2/OIDC e Redis estão preparados para o Back-end MVC. O ambiente local sem Docker pode usar SQLite. Nenhuma migração insere usuários, registros clínicos ou permissões.
+FastAPI, SQLAlchemy, MySQL, Alembic, OAuth2/OIDC e Redis estão preparados para o Back-end MVC. Execução local e Docker usam o mesmo servidor MySQL externo. Nenhuma migração insere usuários, registros clínicos ou permissões.
 
 O guia atualizado é [Segurança e operação](SECURITY.md): contém configuração, instalação, Docker, migrações, auditoria, testes e backup/restauração. O [Docker oficial](https://docs.docker.com/engine/install/) oferece instruções específicas de instalação por sistema operacional.
 
@@ -117,7 +120,7 @@ No Windows, crie o venv com `py -3.12 -m venv .venv` e use `.venv\Scripts\python
 
 ### Docker
 
-Crie `.env` a partir do exemplo e configure sua senha PostgreSQL local conforme o guia, então execute:
+Crie `.env` a partir do exemplo e configure DATABASE_URL do servidor externo conforme o guia, então execute:
 
 ```bash
 docker compose up --build -d --wait
@@ -125,7 +128,7 @@ docker compose logs -f backend
 docker compose down
 ```
 
-O Compose usa PostgreSQL e Redis privados e um novo volume PostgreSQL; não migra dados SQLite existentes. Não executar `down -v` se precisar preservar o banco. Em nuvem com proxy, construa usando a CA confiável antes de iniciar:
+O Compose inicia API e Redis; o MySQL é externo e não tem volume gerenciado neste projeto. O banco externo não é apagado por comandos Compose deste projeto. Em nuvem com proxy, construa usando a CA confiável antes de iniciar:
 
 ```bash
 docker build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt -t prontuario-backend-dev .

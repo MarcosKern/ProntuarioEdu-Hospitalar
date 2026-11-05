@@ -7,7 +7,7 @@ A organização escolhida pelo responsável é **MVC no Back-end Python**, prior
 | Models, Views e Controllers | Escolhido para organizar o servidor |
 | Um Back-end compartilhado por todos os clientes | Mantido |
 | Python no Back-end e Desktop | Mantido |
-| Framework HTTP e persistência | FastAPI e SQLAlchemy/SQLite para desenvolvimento; ver ADR 0002 |
+| Framework HTTP e persistência | FastAPI e SQLAlchemy/MySQL para desenvolvimento; ver ADR 0002 |
 | Web responsiva e tecnologia Web | Responsividade obrigatória; tecnologia em aberto |
 
 FastAPI foi adotado no ambiente inicial com Swagger integrado. Django + DRF oferece ORM, migrações e administração. Django usa a nomenclatura MTV: sua view costuma exercer o papel de Controller. Se for escolhido, registrar como as competências MVC mapeiam para suas convenções, sem duplicar classes apenas para manter nomes. A View conceitual da API corresponde à representação/serialização JSON.

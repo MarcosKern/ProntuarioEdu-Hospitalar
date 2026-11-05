@@ -11,10 +11,10 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError
 
 
-def test_postgres_migrations_and_audit_protection(monkeypatch):
-    url = os.getenv("POSTGRES_TEST_URL")
+def test_mysql_migrations_and_audit_protection(monkeypatch):
+    url = os.getenv("MYSQL_TEST_URL")
     if not url:
-        pytest.skip("POSTGRES_TEST_URL not set; run CI or the PostgreSQL integration command")
+        pytest.skip("MYSQL_TEST_URL not set; run CI or the MySQL integration command")
     assert make_url(url).database.startswith("prontuario_test"), "Use a dedicated test database"
     monkeypatch.setenv("DATABASE_URL", url)
     get_settings.cache_clear()

@@ -2,7 +2,7 @@
 
 Projeto com **Back-end Python**, **Desktop Python** e **Web responsiva**, com tecnologia Web em aberto. O Back-end adota **MVC**, escolhido para facilitar o aprendizado e o trabalho de uma turma com conhecimento intermediário.
 
-**Estado atual:** Back-end MVC inicial executável com FastAPI, Swagger, SQLAlchemy/PostgreSQL (SQLite local), migrações e validação OAuth2/OIDC configurável. Desktop e Web ainda são estruturas documentais. O provedor de autenticação real, o toolkit Desktop e a tecnologia Web precisam de configuração/escolha. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
+**Estado atual:** Back-end MVC inicial executável com FastAPI, Swagger, SQLAlchemy/MySQL (MySQL externo), migrações e validação OAuth2/OIDC configurável. Desktop e Web ainda são estruturas documentais. O provedor de autenticação real, o toolkit Desktop e a tecnologia Web precisam de configuração/escolha. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
 
 ## Como o sistema funciona
 
@@ -120,7 +120,7 @@ O [README do Back-end](backend/README.md#exemplo-prático-registrar-uma-anotaç�
 ## Passos de desenvolvimento
 
 1. **Definir um primeiro fluxo pequeno.** Registrar usuários, permissões, dados necessários e critérios de aceitação, usando dados sintéticos.
-2. **Revisar as ferramentas.** FastAPI e SQLAlchemy/SQLite já compõem o ambiente inicial (ADR 0002). Configurar o provedor OAuth2/OIDC e definir toolkit Desktop; Web pode ser decidida em sua etapa.
+2. **Revisar as ferramentas.** FastAPI e SQLAlchemy/MySQL já compõem o ambiente inicial (ADR 0002). Configurar o provedor OAuth2/OIDC e definir toolkit Desktop; Web pode ser decidida em sua etapa.
 3. **Preparar o ambiente.** Fixar versões, dependências e lockfiles; documentar configuração sem segredos e comandos verificados de instalação/testes.
 4. **Combinar o contrato.** Definir caminho, método, entrada, respostas, erros e segurança da primeira operação; configurar a fonte de verdade do OpenAPI.
 5. **Implementar o Model.** Criar dados, regras e persistência; testar as validações e transações relevantes.
@@ -166,8 +166,12 @@ Os caminhos FastAPI `/docs` e `/openapi.json` já existem; os de Django são ape
 
 ## Executar e testar hoje
 
-O Back-end tem instruções verificadas de venv, instalação, execução local, testes e Docker no [guia do Back-end](backend/README.md#ambiente-de-desenvolvimento-implementado). Execute de `backend`: `python scripts/dev.py --setup`. A configuração inicial está registrada na [ADR 0002](docs/adr/0002-ambiente-desenvolvimento.md). Desktop e Web ainda não têm aplicação executável.
+O Back-end tem instruções verificadas de venv, instalação, execução local, testes e Docker no [guia do Back-end](backend/MYSQL.md). Execute de `backend`: `python scripts/dev.py --setup`. A configuração inicial está registrada na [ADR 0002](docs/adr/0002-ambiente-desenvolvimento.md). Desktop e Web ainda não têm aplicação executável.
 
 ## Segurança e operação
 
 Veja o [guia operacional](backend/SECURITY.md) e a [ADR 0003](docs/adr/0003-seguranca-operacao.md). O banco inicia vazio e não há dados de demonstração. As políticas clínicas e o provedor real ainda precisam ser definidos.
+
+## Banco MySQL externo
+
+DATABASE_URL é obrigatória. Consulte o [guia atualizado](backend/MYSQL.md) e a [ADR 0004](docs/adr/0004-mysql-externo.md). O Compose não inicia banco local.
