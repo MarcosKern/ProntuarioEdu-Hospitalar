@@ -1,0 +1,15 @@
+**/__pycache__
+**/*.pyc
+.venv
+.git
+.env
+.env.*
+!.env.example
+data
+.pytest_cache
+.coverage*
+*.pem
+*.key
+backups
+*.backup.enc
+*.fernet

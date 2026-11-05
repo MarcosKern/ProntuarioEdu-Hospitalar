@@ -91,6 +91,45 @@ Uma pessoa pode atuar em mais de uma frente. A separação orienta onde escrever
 
 Rotas e esquemas de entrada/saída alimentam o OpenAPI, apresentado pelo Swagger UI. Views não devem serializar campos privados por padrão. Veja o [README principal](../README.md#swagger-no-back-end).
 
-Em `tests/unit/`, validar texto vazio, coordenação e respostas. Em `tests/integration/`, verificar acesso negado sem gravação e persistência/transação no banco de teste. Em `tests/contract/`, verificar respostas e OpenAPI. Esses testes ainda não existem.
+Em `tests/unit/`, validar texto vazio, coordenação e respostas. Em `tests/integration/`, verificar acesso negado sem gravação e persistência/transação no banco de teste. Em `tests/contract/`, verificar respostas e OpenAPI. A seção de ambiente descreve os testes iniciais implementados; os testes do exemplo clínico continuam futuros.
 
-Framework, ORM, banco e mecanismo de autenticação continuam em aberto. Não há comandos de execução ou dependências instaladas.
+As instruções abaixo descrevem o ambiente inicial implementado com FastAPI, SQLAlchemy e SQLite. O provedor real de autenticação ainda precisa ser configurado.
+
+## Ambiente de desenvolvimento e segurança
+
+FastAPI, SQLAlchemy, PostgreSQL, Alembic, OAuth2/OIDC e Redis estão preparados para o Back-end MVC. O ambiente local sem Docker pode usar SQLite. Nenhuma migração insere usuários, registros clínicos ou permissões.
+
+O guia atualizado é [Segurança e operação](SECURITY.md): contém configuração, instalação, Docker, migrações, auditoria, testes e backup/restauração. O [Docker oficial](https://docs.docker.com/engine/install/) oferece instruções específicas de instalação por sistema operacional.
+
+### Instalação local
+
+Requer Python 3.12. De `backend`:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python scripts/dev.py
+python -m pytest -q
+```
+
+No Windows, crie o venv com `py -3.12 -m venv .venv` e use `.venv\Scripts\python.exe` para executar os comandos Python sem precisar ativá-lo. `python scripts/dev.py --setup` também prepara o ambiente. O script aplica migrações e inicia a API. `.env` é carregado pela configuração validada.
+
+### Docker
+
+Crie `.env` a partir do exemplo e configure sua senha PostgreSQL local conforme o guia, então execute:
+
+```bash
+docker compose up --build -d --wait
+docker compose logs -f backend
+docker compose down
+```
+
+O Compose usa PostgreSQL e Redis privados e um novo volume PostgreSQL; não migra dados SQLite existentes. Não executar `down -v` se precisar preservar o banco. Em nuvem com proxy, construa usando a CA confiável antes de iniciar:
+
+```bash
+docker build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt -t prontuario-backend-dev .
+docker compose up -d --no-build --wait
+```
+
+`requirements.txt` contém versões reais fixadas com pip freeze; `venv` é parte do Python. OIDC exige provedor externo, sem login ou usuário de demonstração. Swagger está disponível somente fora de produção e não substitui regras de autorização.
