@@ -2,6 +2,7 @@ from datetime import UTC
 
 import jwt
 from fastapi.testclient import TestClient
+
 from prontuario_backend.main import app
 
 client = TestClient(app, base_url="http://localhost")
@@ -35,6 +36,7 @@ def test_signed_token_and_rejections(monkeypatch):
     from types import SimpleNamespace
 
     from cryptography.hazmat.primitives.asymmetric import rsa
+
     from prontuario_backend.config import auth
 
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)

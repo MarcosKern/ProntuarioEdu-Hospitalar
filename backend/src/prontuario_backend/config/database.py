@@ -1,8 +1,9 @@
 from functools import lru_cache
 
-from prontuario_backend.config.settings import get_settings
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+from prontuario_backend.config.settings import get_settings
 
 
 class Base(DeclarativeBase):

@@ -1,9 +1,10 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from prontuario_backend.config.database import Base
 from sqlalchemy import DateTime, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
+
+from prontuario_backend.config.database import Base
 
 
 class RecordPermission(Base):

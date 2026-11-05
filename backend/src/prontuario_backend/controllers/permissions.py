@@ -1,8 +1,9 @@
 from fastapi import HTTPException
-from prontuario_backend.config.database import session
-from prontuario_backend.models.security import AuditEvent, RecordPermission
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+
+from prontuario_backend.config.database import session
+from prontuario_backend.models.security import AuditEvent, RecordPermission
 
 
 def require_record_access(subject, record_id, action, request_id):

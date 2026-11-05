@@ -3,6 +3,7 @@ from functools import lru_cache
 import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2AuthorizationCodeBearer
+
 from prontuario_backend.config.settings import get_settings
 
 # URLs de exemplo não realizam login. Configure o provedor antes de usar Authorize.

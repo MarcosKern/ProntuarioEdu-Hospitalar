@@ -4,11 +4,12 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
-from prontuario_backend.config.database import engine
-from prontuario_backend.config.settings import get_settings
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError
+
+from prontuario_backend.config.database import engine
+from prontuario_backend.config.settings import get_settings
 
 
 def test_mysql_migrations_and_audit_protection(monkeypatch):

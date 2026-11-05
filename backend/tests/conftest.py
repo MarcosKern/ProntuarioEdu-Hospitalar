@@ -4,10 +4,11 @@ import os
 os.environ.setdefault("DATABASE_URL", "mysql+pymysql://unused@127.0.0.1/prontuario_test")
 
 import pytest
-from prontuario_backend.config.database import engine_for
-from prontuario_backend.config.settings import get_settings
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
+
+from prontuario_backend.config.database import engine_for
+from prontuario_backend.config.settings import get_settings
 
 
 @pytest.fixture(autouse=True)

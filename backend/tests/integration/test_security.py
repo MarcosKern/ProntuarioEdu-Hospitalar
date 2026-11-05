@@ -6,13 +6,14 @@ from alembic import command
 from alembic.config import Config
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
+from sqlalchemy import func, select
+
 from prontuario_backend.config.database import session
 from prontuario_backend.config.settings import Settings, get_settings
 from prontuario_backend.controllers.permissions import require_record_access
 from prontuario_backend.main import create_app
 from prontuario_backend.models.security import AuditEvent, RecordPermission
-from pydantic import ValidationError
-from sqlalchemy import func, select
 
 
 def test_production_rejects_incomplete_configuration():
