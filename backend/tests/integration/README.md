@@ -1,3 +1,7 @@
 # Testes de integração
 
-Executar operações HTTP contra a aplicação e banco isolados. Verificar rotas, autenticação, autorização por registro, gravação, commit/rollback e mapeamento de erros. Usar dados sintéticos e limpar somente o banco de teste. Uma porta aberta não comprova funcionamento. `test_development.py` verifica SQL real em arquivo temporário, Swagger/OpenAPI e tokens JWT com chaves sintéticas, sem chamar provedor externo.
+A suíte verifica rotas, tokens, limites, SQL real em **MySQL externo de teste** e migrações. Não utiliza arquivo SQLite. Siga a [preparação da suíte](../README.md) antes de executar.
+
+Use banco descartável separado (`MYSQL_TEST_URL`, nome iniciado por `prontuario_test`). A fixture apaga tabelas técnicas entre casos. Sem essa variável, verificações que precisam do banco são puladas. Nunca use o banco de desenvolvimento ou produção, nem rode a suíte em paralelo no mesmo banco.
+
+`test_development.py` cobre SQL, schema e identidade; `test_security.py` verifica configuração e controles HTTP/permissões; `test_mysql.py` verifica triggers de auditoria. Testes usam dados transitórios e não carregam cadastros na aplicação. OIDC externo e funcionalidades clínicas exigem validações próprias quando configurados/implementados.

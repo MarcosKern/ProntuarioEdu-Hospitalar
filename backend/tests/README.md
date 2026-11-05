@@ -1,7 +1,46 @@
-# Testes do Back-end MVC
+# Testar o Back-end
 
-- `unit/`: regras dos Models e lógica isolada dos Controllers/Views.
-- `integration/`: rotas, autenticação, autorização, banco de teste e transações.
-- `contract/`: correspondência entre respostas reais e OpenAPI.
+Execute de `backend`, com o venv já preparado e as dependências de `requirements.txt` instaladas. Os comandos são os mesmos da CI:
 
-Uma nova operação deve cobrir sucesso, entrada inválida, usuário sem acesso e falha de gravação quando aplicável. Use dados sintéticos e ambiente isolado. A suíte inicial usa pytest e está em `integration/test_development.py`; executar `python -m pytest -q` de `backend` com o venv ativo. Testes de funcionalidades clínicas ainda são futuros.
+```bash
+python -m ruff check src tests scripts
+python -m pip check
+python -m pytest -q
+python -m pip_audit -r requirements.txt
+```
+
+No PowerShell sem ativação, use `.\.venv\Scripts\python.exe` no lugar de `python`.
+
+## Testes com MySQL
+
+Os testes de integração precisam de `MYSQL_TEST_URL` no **ambiente do processo**. O banco deve ser exclusivo de testes, descartável, com nome iniciado por `prontuario_test` e permissão para criar/apagar tabelas e triggers. O servidor pode ser o mesmo do desenvolvimento se houver autorização do responsável, mas o banco deve ser diferente.
+
+**A fixture apaga `audit_events`, `record_permissions` e `alembic_version` antes de cada teste quando MYSQL_TEST_URL está definida. Nunca use uma URL do banco de aplicação.** Não executar a suíte em paralelo contra o mesmo banco.
+
+Uma forma de fornecer a variável sem colocá-la no histórico é criar privadamente `backend/.env.test` contendo somente `MYSQL_TEST_URL` com sua conexão de teste. Esse arquivo já é ignorado. Rode então:
+
+```bash
+python -m dotenv -f .env.test run -- python -m pytest -q
+```
+
+No PowerShell sem ativação do venv, use os dois caminhos explicitamente:
+
+```powershell
+.\.venv\Scripts\python.exe -m dotenv -f .env.test run -- .\.venv\Scripts\python.exe -m pytest -q
+```
+
+A CLI dotenv já está disponível pelas dependências instaladas. O arquivo `.env.test` não é carregado automaticamente por pytest; o comando acima injeta sua variável no processo. Se o servidor exigir CA, configure `MYSQL_SSL_CA` correspondente; a verificação de TLS não deve ser desativada. Variáveis já exportadas e o `.env` também podem afetar settings: mantenha a configuração de teste separada e revise os destinos privadamente.
+
+Sem MYSQL_TEST_URL, testes dependentes de banco são **pulados**, não aprovados. A CI fornece MySQL exclusivo do runner e executa esses testes. Os dados transitórios usados na suíte não são carregados na aplicação; não há seed de usuários ou prontuários.
+
+## Organização e cobertura atual
+
+| Arquivo/pasta | Verificação |
+| --- | --- |
+| `integration/test_development.py` | Saúde com SQL, Swagger/OpenAPI e tokens assinados em teste |
+| `integration/test_security.py` | Configuração, limites, headers, CORS, migrações e autorização/auditoria |
+| `integration/test_mysql.py` | Migrações MySQL e proteção de auditoria contra exclusão |
+| `unit/` | Reservado para testes unitários adicionais |
+| `contract/` | Reservado para cobertura completa de contratos futuros |
+
+Os testes OIDC usam chaves isoladas; não comprovam login/logout no provedor externo. Os testes existentes também não representam cobertura de funcionalidades clínicas ainda não implementadas. Consulte [MYSQL.md](../MYSQL.md#testes) e [SECURITY.md](../SECURITY.md).

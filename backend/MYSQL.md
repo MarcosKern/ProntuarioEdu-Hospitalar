@@ -58,3 +58,23 @@ python scripts/backup.py verify --key-file backups/storage.fernet --file backups
 ```
 
 A senha é passada por arquivo temporário privado montado somente para leitura, sem argumento de linha de comando. A CA é montada quando MYSQL_SSL_CA está configurada. O dump é transacional para tabelas InnoDB e não deve ocorrer durante mudanças de schema. A restauração ocorre em banco `restore_check_...` novo, removido ao final; não sobrescreve o banco configurado. Backup é criptografado; guarde a chave em local separado. O script processa o dump em memória; grandes bancos precisam de solução operacional com streaming e política de retenção/recuperação.
+
+## Certificado MySQL no Compose
+
+Para desenvolvimento com TLS e CA fornecida pelo operador, adicione em `.env` **o caminho absoluto do arquivo no host**:
+
+```dotenv
+MYSQL_SSL_CA_HOST=/caminho/absoluto/ca-mysql.pem
+```
+
+No modo Python local, `MYSQL_SSL_CA` continua apontando ao arquivo legível no host. No Docker, o override fornece o caminho interno automaticamente:
+
+```bash
+docker compose -f compose.yaml -f compose.tls.yaml config --quiet
+docker compose -f compose.yaml -f compose.tls.yaml up --build -d --wait
+docker compose -f compose.yaml -f compose.tls.yaml ps
+```
+
+O arquivo é montado somente para leitura em `/run/mysql-ca.pem`. Use os mesmos dois `-f` nos comandos de logs, recriação e encerramento deste modo. O hostname em DATABASE_URL precisa corresponder ao certificado do servidor. O conteúdo da CA não é uma senha, mas não deve ser incorporado à imagem específica de cada desenvolvedor.
+
+Em ambiente de build com proxy, construa primeiro com `--secret id=proxy_ca,...` conforme o README e use `up -d --no-build --wait` com os dois arquivos Compose. O segredo de build e o certificado MySQL são independentes.

@@ -1,0 +1,10 @@
+# Use with: docker compose -f compose.yaml -f compose.tls.yaml up --build -d --wait
+services:
+  backend:
+    environment:
+      MYSQL_SSL_CA: /run/mysql-ca.pem
+    volumes:
+      - type: bind
+        source: ${MYSQL_SSL_CA_HOST:?Defina MYSQL_SSL_CA_HOST com o caminho da CA no host}
+        target: /run/mysql-ca.pem
+        read_only: true
