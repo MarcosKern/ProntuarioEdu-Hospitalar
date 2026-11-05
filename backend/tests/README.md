@@ -1,15 +1,7 @@
-# Testes do Back-end
+# Testes do Back-end MVC
 
-## Responsabilidade
+- `unit/`: regras dos Models e lógica isolada dos Controllers/Views.
+- `integration/`: rotas, autenticação, autorização, banco de teste e transações.
+- `contract/`: correspondência entre respostas reais e OpenAPI.
 
-Estratégia dividida em unit, integration e contract.
-
-## Divisão de competências
-
-Cada funcionalidade exige evidência de regras e fronteiras relevantes. Usar dados sintéticos e bancos de teste isolados. Diretórios vazios não representam cobertura.
-
-## Como desenvolver aqui
-
-Defina primeiro a entrada, a saída e as dependências permitidas da alteração. Implemente apenas a responsabilidade desta pasta; mudanças em outras fronteiras devem atualizar seus contratos e testes. Consulte o README do componente e a ADR inicial antes de introduzir dependências.
-
-Esta pasta faz parte de uma proposta documental. Ainda não há implementação nem comando de execução próprio.
+Uma nova operação deve cobrir sucesso, entrada inválida, usuário sem acesso e falha de gravação quando aplicável. Use dados sintéticos e ambiente isolado. Não há suíte implementada ou runner escolhido.

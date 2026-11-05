@@ -1,15 +1,3 @@
-# Testes de contrato HTTP
+# Testes do contrato da API
 
-## Responsabilidade
-
-Compatibilidade da API implementada com o OpenAPI publicado.
-
-## Divisão de competências
-
-Verificar caminhos, métodos, entradas, respostas e autenticação. Validar o YAML/JSON sozinho não comprova que o servidor cumpre o contrato.
-
-## Como desenvolver aqui
-
-Defina primeiro a entrada, a saída e as dependências permitidas da alteração. Implemente apenas a responsabilidade desta pasta; mudanças em outras fronteiras devem atualizar seus contratos e testes. Consulte o README do componente e a ADR inicial antes de introduzir dependências.
-
-Esta pasta faz parte de uma proposta documental. Ainda não há implementação nem comando de execução próprio.
+Conferir se métodos, caminhos, esquemas, códigos de resposta e segurança da API real correspondem ao OpenAPI. Desktop e Web dependem dessa estabilidade. Validar o documento é necessário, mas também testar requisições reais. Ferramentas serão escolhidas com o framework; não há testes implementados.

@@ -6,7 +6,7 @@ Configurações futuras de serviços locais e comandos reproduzíveis.
 
 ## Divisão de competências
 
-Escolher serviços somente após a arquitetura aprovada. Documentar portas, prontidão e limpeza de dados de teste; não incluir segredos nem assumir que processos sobrevivem à restauração do ambiente.
+MVC já foi escolhido; selecionar serviços após aprovar framework, banco e demais dependências. Documentar portas, prontidão e limpeza de dados de teste; não incluir segredos nem assumir que processos sobrevivem à restauração do ambiente.
 
 ## Como desenvolver aqui
 
