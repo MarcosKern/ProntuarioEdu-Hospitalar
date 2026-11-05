@@ -2,7 +2,7 @@
 
 Projeto com **Back-end Python**, **Desktop Python** e **Web responsiva**, com tecnologia Web em aberto. O Back-end adota **MVC**, escolhido para facilitar o aprendizado e o trabalho de uma turma com conhecimento intermediário.
 
-**Estado atual:** Back-end MVC inicial executável com FastAPI, Swagger, SQLAlchemy/SQLite e validação OAuth2/OIDC configurável. Desktop e Web ainda são estruturas documentais. O provedor de autenticação real, o toolkit Desktop e a tecnologia Web precisam de configuração/escolha. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
+**Estado atual:** Back-end MVC inicial executável com FastAPI, Swagger, SQLAlchemy/PostgreSQL (SQLite local), migrações e validação OAuth2/OIDC configurável. Desktop e Web ainda são estruturas documentais. O provedor de autenticação real, o toolkit Desktop e a tecnologia Web precisam de configuração/escolha. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
 
 ## Como o sistema funciona
 
@@ -167,3 +167,7 @@ Os caminhos FastAPI `/docs` e `/openapi.json` já existem; os de Django são ape
 ## Executar e testar hoje
 
 O Back-end tem instruções verificadas de venv, instalação, execução local, testes e Docker no [guia do Back-end](backend/README.md#ambiente-de-desenvolvimento-implementado). Execute de `backend`: `python scripts/dev.py --setup`. A configuração inicial está registrada na [ADR 0002](docs/adr/0002-ambiente-desenvolvimento.md). Desktop e Web ainda não têm aplicação executável.
+
+## Segurança e operação
+
+Veja o [guia operacional](backend/SECURITY.md) e a [ADR 0003](docs/adr/0003-seguranca-operacao.md). O banco inicia vazio e não há dados de demonstração. As políticas clínicas e o provedor real ainda precisam ser definidos.

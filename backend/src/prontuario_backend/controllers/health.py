@@ -1,8 +1,7 @@
 from fastapi import HTTPException
-from sqlalchemy.exc import SQLAlchemyError
-
 from prontuario_backend.models.health import database_ready
 from prontuario_backend.views.health import health_response
+from sqlalchemy.exc import SQLAlchemyError
 
 
 def health():

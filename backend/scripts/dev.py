@@ -1,10 +1,10 @@
 """Execute da pasta backend: python scripts/dev.py [--setup]."""
 import argparse
 import os
-from pathlib import Path
 import subprocess
 import sys
 import venv
+from pathlib import Path
 
 
 def main():
@@ -22,8 +22,9 @@ def main():
         subprocess.run([str(python), "-m", "pip", "install", "-r", "requirements.txt"], check=True)
     if not python.exists():
         parser.error("Ambiente ausente. Execute primeiro com --setup.")
+    subprocess.run([str(python), "-m", "alembic", "upgrade", "head"], check=True)
     command = [str(python), "-m", "uvicorn", "prontuario_backend.main:app",
-               "--app-dir", "src", "--reload", "--host", args.host, "--port", str(args.port)]
+               "--app-dir", "src", "--reload", "--no-access-log", "--no-proxy-headers", "--host", args.host, "--port", str(args.port)]
     try:
         return subprocess.call(command)
     except KeyboardInterrupt:

@@ -36,3 +36,6 @@ dist/
 .DS_Store
 Thumbs.db
 # Não ignorar requirements*.txt, migrações ou arquivos Docker
+backups/
+*.backup.enc
+*.fernet

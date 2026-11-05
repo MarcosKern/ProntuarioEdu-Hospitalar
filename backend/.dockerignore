@@ -10,3 +10,6 @@ data
 .coverage*
 *.pem
 *.key
+backups
+*.backup.enc
+*.fernet

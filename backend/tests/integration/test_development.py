@@ -1,8 +1,10 @@
+from datetime import UTC
+
 import jwt
 from fastapi.testclient import TestClient
 from prontuario_backend.main import app
 
-client = TestClient(app)
+client = TestClient(app, base_url="http://localhost")
 
 
 def test_health_uses_sql(tmp_path, monkeypatch):
@@ -31,8 +33,9 @@ def test_openapi_and_swagger():
 
 
 def test_signed_token_and_rejections(monkeypatch):
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
     from types import SimpleNamespace
+
     from cryptography.hazmat.primitives.asymmetric import rsa
     from prontuario_backend.config import auth
 
@@ -44,7 +47,7 @@ def test_signed_token_and_rejections(monkeypatch):
         get_signing_key_from_jwt=lambda token: SimpleNamespace(key=private_key.public_key())
     ))
     claims = {"iss": "https://issuer.example.test", "aud": "prontuario-test",
-              "sub": "synthetic-user", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)}
+              "sub": "synthetic-user", "exp": datetime.now(UTC) + timedelta(minutes=5)}
 
     def request(payload):
         token = jwt.encode(payload, private_key, algorithm="RS256")
@@ -52,4 +55,4 @@ def test_signed_token_and_rejections(monkeypatch):
 
     assert request(claims).json() == {"subject": "synthetic-user"}
     assert request({**claims, "aud": "other-api"}).status_code == 401
-    assert request({**claims, "exp": datetime.now(timezone.utc) - timedelta(seconds=5)}).status_code == 401
+    assert request({**claims, "exp": datetime.now(UTC) - timedelta(seconds=5)}).status_code == 401
