@@ -6,13 +6,14 @@ from alembic import command
 from alembic.config import Config
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
+from sqlalchemy import func, select
+
 from prontuario_backend.config.database import session
 from prontuario_backend.config.settings import Settings, get_settings
 from prontuario_backend.controllers.permissions import require_record_access
 from prontuario_backend.main import create_app
 from prontuario_backend.models.security import AuditEvent, RecordPermission
-from pydantic import ValidationError
-from sqlalchemy import func, select
 
 
 def test_production_rejects_incomplete_configuration():
@@ -38,7 +39,7 @@ def test_headers_limits_and_logs(monkeypatch, caplog):
     assert "DO_NOT_LOG" not in caplog.text
 
 
-def test_migrations_empty_database_and_deny_by_default():
+def test_migrations_empty_database_and_deny_by_default(mysql_url):
     cfg = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
     command.upgrade(cfg, "head")
     command.upgrade(cfg, "head")
@@ -65,8 +66,10 @@ def test_migrations_empty_database_and_deny_by_default():
 
 def test_production_hides_docs_and_metrics(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
-    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://unused@localhost/unused")
-    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("DATABASE_URL", "mysql+pymysql://unused@localhost/unused")
+    monkeypatch.setenv("REDIS_URL", "rediss://localhost:6379/0")
+    import certifi
+    monkeypatch.setenv("MYSQL_SSL_CA", certifi.where())
     for key in ("OIDC_ISSUER", "OIDC_JWKS_URL", "OIDC_AUTHORIZATION_URL", "OIDC_TOKEN_URL"):
         monkeypatch.setenv(key, "https://identity.example.test/endpoint")
     monkeypatch.setenv("OIDC_AUDIENCE", "test-only")

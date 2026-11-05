@@ -2,7 +2,7 @@
 
 Projeto com **Back-end Python**, **Desktop Python** e **Web responsiva**, com tecnologia Web em aberto. O Back-end adota **MVC**, escolhido para facilitar o aprendizado e o trabalho de uma turma com conhecimento intermediário.
 
-**Estado atual:** Back-end MVC inicial executável com FastAPI, Swagger, SQLAlchemy/PostgreSQL (SQLite local), migrações e validação OAuth2/OIDC configurável. Desktop e Web ainda são estruturas documentais. O provedor de autenticação real, o toolkit Desktop e a tecnologia Web precisam de configuração/escolha. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
+**Estado atual:** Back-end MVC inicial executável com FastAPI, Swagger, SQLAlchemy com MySQL externo, migrações e validação OAuth2/OIDC configurável. Desktop e Web ainda são estruturas documentais. O provedor de autenticação real, o toolkit Desktop e a tecnologia Web precisam de configuração/escolha. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
 
 ## Como o sistema funciona
 
@@ -13,7 +13,7 @@ flowchart LR
     Desktop[Desktop Python] --> API[API Python MVC]
     Web[Web: computador e celular] --> API
     Apps[Outros aplicativos] --> API
-    API --> Banco[(Banco a definir)]
+    API --> Banco[(MySQL externo)]
 ```
 
 A API seguirá contratos HTTP descritos por OpenAPI. Assim, os clientes conhecem entradas, respostas e erros sem depender do código interno do Back-end.
@@ -45,9 +45,9 @@ O Controller recebe a requisição e coordena; não concentra SQL ou todas as re
 
 MVC organiza o código; o servidor continua sendo uma aplicação única. Não vamos dividir o projeto em microsserviços nem exigir interfaces de repositório para cada operação. O objetivo é ter responsabilidades claras com poucas camadas.
 
-### Qual framework usar?
+### Framework e banco adotados
 
-FastAPI foi adotado para o ambiente inicial, com Swagger UI integrado. Django + Django REST Framework oferece ORM, migrações e administração. Django usa a nomenclatura MTV: sua view frequentemente exerce a coordenação que aqui chamamos de Controller. Se for escolhido, o mapeamento será documentado, usando as convenções do framework sem criar camadas duplicadas apenas pelo nome.
+O Back-end usa FastAPI com Swagger integrado e SQLAlchemy/PyMySQL para MySQL 8.4 externo. Não é necessário escolher ou instalar Django. A imagem Docker usa Python 3.12 com Alpine 3.23 fixada por digest. OIDC depende de provedor externo; Desktop e Web permanecem em aberto.
 
 ## Estrutura de pastas
 
@@ -120,7 +120,7 @@ O [README do Back-end](backend/README.md#exemplo-prático-registrar-uma-anotaç�
 ## Passos de desenvolvimento
 
 1. **Definir um primeiro fluxo pequeno.** Registrar usuários, permissões, dados necessários e critérios de aceitação, usando dados sintéticos.
-2. **Revisar as ferramentas.** FastAPI e SQLAlchemy/SQLite já compõem o ambiente inicial (ADR 0002). Configurar o provedor OAuth2/OIDC e definir toolkit Desktop; Web pode ser decidida em sua etapa.
+2. **Revisar as ferramentas.** FastAPI e SQLAlchemy/MySQL já compõem o ambiente atual (ADR 0004). Configurar o provedor OAuth2/OIDC e definir toolkit Desktop; Web pode ser decidida em sua etapa.
 3. **Preparar o ambiente.** Fixar versões, dependências e lockfiles; documentar configuração sem segredos e comandos verificados de instalação/testes.
 4. **Combinar o contrato.** Definir caminho, método, entrada, respostas, erros e segurança da primeira operação; configurar a fonte de verdade do OpenAPI.
 5. **Implementar o Model.** Criar dados, regras e persistência; testar as validações e transações relevantes.
@@ -130,7 +130,7 @@ O [README do Back-end](backend/README.md#exemplo-prático-registrar-uma-anotaç�
 9. **Escolher e desenvolver a Web.** Registrar a tecnologia; testar o mesmo fluxo em computador e celular, incluindo teclado, toque e acessibilidade.
 10. **Automatizar e preparar a entrega.** Configurar testes reais na CI e revisão do Codex; definir implantação, auditoria, logs sem dados sensíveis, backups e recuperação. Verificar na prática as proteções de merge disponíveis.
 
-Essas etapas são um plano, não tarefas concluídas. As quatro aprovações humanas e a revisão do Codex fazem parte da política solicitada; arquivos de documentação não comprovam que regras estejam ativas no GitHub.
+Esse roteiro inclui a base técnica já implementada e funcionalidades futuras; os guias de execução abaixo descrevem o estado atual. As quatro aprovações humanas e a revisão do Codex fazem parte da política solicitada; arquivos de documentação não comprovam que regras estejam ativas no GitHub.
 
 ## Swagger no Back-end
 
@@ -145,29 +145,30 @@ flowchart LR
     Swagger -->|Requisições reais| Rotas[Rotas da API]
 ```
 
-| Framework candidato | Como será configurado |
-| --- | --- |
-| FastAPI | Esquemas tipados e metadados das rotas geram OpenAPI; caminhos padrão `/docs` e `/openapi.json` serão confirmados na configuração |
-| Django + DRF | Avaliar gerador como `drf-spectacular`; serializers e metadados geram schema; rotas propostas `/api/schema/` e `/api/docs/` |
-
-Os caminhos FastAPI `/docs` e `/openapi.json` já existem; os de Django são apenas referência. As configurações ficam em `config/`; rotas e esquemas HTTP descrevem entrada e resposta. Essa documentação não deve obrigar Models a conhecer Swagger.
+FastAPI gera OpenAPI a partir das rotas e esquemas. Em desenvolvimento, a interface fica em `/docs` e a especificação em `/openapi.json`. Em `APP_ENV=production`, ambas são desabilitadas. A interface não implementa o login por conta própria: configurar o provedor OIDC conforme o guia operacional.
 
 ### Como aplicar
 
-1. Escolher o framework e fixar suas dependências.
+1. Usar as dependências FastAPI já fixadas em `backend/requirements.txt`.
 2. Descrever entradas, campos públicos das respostas, status, erros e autenticação de cada operação.
 3. Gerar uma única especificação a partir da fonte aprovada. Em `contracts/openapi/`, guardar a exportação ou instruções de geração; não manter uma cópia manual divergente.
 4. Configurar a interface e o botão **Authorize** conforme a autenticação escolhida, sem embutir credenciais ou segredos.
 5. Validar o schema e testar requisições reais contra a API de teste, incluindo rejeições por falta de acesso.
 6. Incluir validação e comparação de contratos na CI para evitar quebrar clientes existentes.
-7. Decidir se Swagger UI e schema terão acesso restrito ou serão desativados em produção. Usar exemplos sintéticos e revisar a exposição de dados.
+7. Manter Swagger UI e schema desativados em produção, como implementado. Revisar a exposição de dados nas respostas.
 
 **Try it out executa a operação de verdade.** Usar ambiente de desenvolvimento para escritas. Swagger não cria autenticação, regras ou testes automaticamente. Se houver origens diferentes, configurar CORS somente para as origens necessárias; isso não substitui autorização.
 
 ## Executar e testar hoje
 
-O Back-end tem instruções verificadas de venv, instalação, execução local, testes e Docker no [guia do Back-end](backend/README.md#ambiente-de-desenvolvimento-implementado). Execute de `backend`: `python scripts/dev.py --setup`. A configuração inicial está registrada na [ADR 0002](docs/adr/0002-ambiente-desenvolvimento.md). Desktop e Web ainda não têm aplicação executável.
+Siga o [guia de configuração do Back-end](backend/README.md#configurar-o-ambiente-de-desenvolvimento) nesta ordem: pré-requisitos → `.env` com MySQL externo → Python local ou Compose → verificação de saúde → testes em banco separado. O guia contém comandos Linux/macOS/Windows, certificado TLS e diagnóstico de falhas.
+
+Somente depois de configurar o `.env`, execute de `backend` `python scripts/dev.py --setup` ou `docker compose up --build -d --wait`. Os dois comandos aplicam migrações no banco configurado; utilize banco de desenvolvimento autorizado. O servidor ocupa o terminal no modo local; execute testes em outro terminal. Consulte a [suíte de testes](backend/tests/README.md) para configurar MYSQL_TEST_URL com segurança. Desktop e Web ainda não têm aplicação executável.
 
 ## Segurança e operação
 
-Veja o [guia operacional](backend/SECURITY.md) e a [ADR 0003](docs/adr/0003-seguranca-operacao.md). O banco inicia vazio e não há dados de demonstração. As políticas clínicas e o provedor real ainda precisam ser definidos.
+Veja o [guia operacional](backend/SECURITY.md) e a [ADR 0003](docs/adr/0003-seguranca-operacao.md). As migrações não inserem cadastros ou dados de demonstração. As políticas clínicas e o provedor real ainda precisam ser definidos.
+
+## Banco MySQL externo
+
+DATABASE_URL é obrigatória. Consulte o [guia atualizado](backend/MYSQL.md) e a [ADR 0004](docs/adr/0004-mysql-externo.md). O Compose não inicia banco local.

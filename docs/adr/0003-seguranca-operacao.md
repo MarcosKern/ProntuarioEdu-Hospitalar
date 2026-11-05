@@ -1,5 +1,7 @@
 # ADR 0003 — Segurança e operação do Back-end MVC
 
+> Histórico: a escolha de banco deste documento foi substituída pela [ADR 0004 — MySQL externo](0004-mysql-externo.md).
+
 Status: implementação solicitada pelo responsável. Sem cadastros, prontuários ou concessões iniciais.
 
 ## Decisões

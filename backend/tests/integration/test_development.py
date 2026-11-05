@@ -2,17 +2,16 @@ from datetime import UTC
 
 import jwt
 from fastapi.testclient import TestClient
+
 from prontuario_backend.main import app
 
 client = TestClient(app, base_url="http://localhost")
 
 
-def test_health_uses_sql(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
+def test_health_uses_sql(mysql_url):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "database": "ok"}
-    assert (tmp_path / "test.db").exists()
 
 
 def test_protected_route_requires_token():
@@ -37,6 +36,7 @@ def test_signed_token_and_rejections(monkeypatch):
     from types import SimpleNamespace
 
     from cryptography.hazmat.primitives.asymmetric import rsa
+
     from prontuario_backend.config import auth
 
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)

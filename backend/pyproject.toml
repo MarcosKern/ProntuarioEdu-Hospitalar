@@ -1,3 +1,14 @@
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+src = ["src"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "BLE"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test environment must be set before importing the application.
+"tests/conftest.py" = ["E402"]

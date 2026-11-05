@@ -1,14 +1,15 @@
 # Infraestrutura
 
-- `development`: futuras configurações de serviços locais.
-- `deployment`: futuras configurações de implantação.
+O ambiente de desenvolvimento executável está em `backend`, não nesta pasta:
 
-Não há banco, contêiner ou provedor selecionado. Segredos devem vir da configuração segura do ambiente e nunca do repositório. Não existem comandos de infraestrutura executáveis nesta etapa.
+- [README do Back-end](../backend/README.md#configurar-o-ambiente-de-desenvolvimento): instalação local e Docker.
+- [MySQL externo](../backend/MYSQL.md): conexão, TLS, migrações, testes e backups.
+- [Segurança e operação](../backend/SECURITY.md): limites, auditoria e requisitos de produção.
+- [Compose](../backend/compose.yaml): API e Redis privados, sem servidor de banco local.
+- [Override TLS](../backend/compose.tls.yaml): montagem da CA MySQL.
 
-## Divisão de competências no desenvolvimento
+`development/` e `deployment/` reservam espaço para infraestrutura adicional futura. Não há implantação de produção automatizada nesta pasta. Docker Engine/Desktop e Compose precisam estar funcionando; não iniciar um segundo daemon dentro de ambiente gerenciado.
 
-`development/` torna o ambiente local reproduzível. `deployment/` descreve como entregar e operar versões aprovadas. O código de aplicação permanece em seus componentes; configuração operacional não deve redefinir regras de negócio.
+## Divisão de competências
 
-Quem mantém infraestrutura cuida de serviços, configuração, isolamento, logs, backups e prontidão. Quem mantém cada aplicativo informa os recursos e configurações necessários e fornece verificações funcionais. A estratégia de migração precisa ser combinada com o Back-end, incluindo compatibilidade e recuperação em falhas.
-
-Antes de adicionar configuração, registre qual decisão a justifica. Depois, valide em ambiente de teste: inicialização, requisição representativa, encerramento, repetibilidade e recuperação. Ainda não existem Dockerfiles, serviços ou scripts de implantação para executar.
+Infraestrutura cuida de configuração, conectividade, recursos, disponibilidade e recuperação. Back-end informa dependências, migrações e verificações funcionais. Os clientes usam somente a API. Segredos ficam fora do repositório; permissões e autorização são verificadas no servidor.

@@ -1,5 +1,7 @@
 # ADR 0002 — Ambiente inicial do Back-end
 
+> Histórico: a escolha de banco deste documento foi substituída pela [ADR 0004 — MySQL externo](0004-mysql-externo.md).
+
 Status: implementado para atender à solicitação de SQL, Swagger, venv, OAuth2 e execução em desenvolvimento. A configuração de um provedor real continua pendente.
 
 ## Decisão e justificativa

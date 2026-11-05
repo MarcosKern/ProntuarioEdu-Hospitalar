@@ -9,16 +9,26 @@ jobs:
   test:
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgres:17
+      mysql:
+        image: mysql:8.4
         env:
-          POSTGRES_USER: prontuario
-          POSTGRES_PASSWORD: ci-only-ephemeral
-          POSTGRES_DB: prontuario_test
-        ports: ['5432:5432']
-        options: --health-cmd 'pg_isready -U prontuario -d prontuario_test' --health-interval 5s --health-retries 10
+          MYSQL_USER: prontuario
+          MYSQL_PASSWORD: ci-only-ephemeral
+          MYSQL_ROOT_PASSWORD: ci-root-only-ephemeral
+          MYSQL_DATABASE: prontuario_test
+          MYSQL_ROOT_HOST: "%"
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-start-period=30s
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
     env:
-      POSTGRES_TEST_URL: postgresql+psycopg://prontuario:ci-only-ephemeral@localhost:5432/prontuario_test
+      MYSQL_TEST_URL: mysql+pymysql://root:ci-root-only-ephemeral@127.0.0.1:3306/prontuario_test
+      MYSQL_TEST_ALLOW_RESET: prontuario_test
+      # Application bootstrap URL is never used for test SQL.
+      DATABASE_URL: mysql+pymysql://unused@127.0.0.1:3306/prontuario_application_not_used
     defaults:
       run:
         working-directory: backend
@@ -39,9 +49,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t prontuario-backend:ci backend
-      - uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: prontuario-backend:ci
-          scanners: vuln,secret
-          severity: HIGH,CRITICAL
-          exit-code: '1'
+      - name: Scan image vulnerabilities and secrets
+        # Official Trivy 0.65.0 image, pinned to the verified registry digest.
+        # No runner-side download/install script is required.
+        run: |
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock:ro \
+            aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
+            image --image-src docker \
+            --db-repository ghcr.io/aquasecurity/trivy-db:2 \
+            --scanners vuln,secret \
+            --severity HIGH,CRITICAL --exit-code 1 --timeout 10m \
+            prontuario-backend:ci

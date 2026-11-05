@@ -1,4 +1,4 @@
-"""Encrypted PostgreSQL backups and isolated restore checks via development Compose."""
+"""Encrypted backups of the configured external MySQL; isolated restore verification."""
 import argparse
 import os
 import subprocess
@@ -7,10 +7,12 @@ from pathlib import Path
 from uuid import uuid4
 
 from cryptography.fernet import Fernet
+from dotenv import load_dotenv
+from sqlalchemy.engine import make_url
 
 
-def docker(*args, **kwargs):
-    return subprocess.run(["docker", "compose", "exec", "-T", "db", *args], check=True, **kwargs)
+def quoted(value):
+    return '"' + str(value).replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n') + '"'
 
 
 def main():
@@ -25,29 +27,52 @@ def main():
         with os.fdopen(fd, "wb") as key:
             key.write(Fernet.generate_key())
         return
+    load_dotenv()
+    url = make_url(os.environ["DATABASE_URL"])
+    if url.drivername != "mysql+pymysql" or not url.database:
+        parser.error("Configure an external MySQL DATABASE_URL")
     cipher = Fernet(args.key_file.read_bytes())
     if not args.file:
         parser.error("--file is required")
-    if args.operation == "backup":
-        # Temporary cleartext is private and removed on success/failure.
-        with tempfile.TemporaryFile() as dump:
-            docker("pg_dump", "-U", "prontuario", "-d", "prontuario", "-Fc", stdout=dump)
-            dump.seek(0)
-            payload = cipher.encrypt(dump.read())
-        fd = os.open(args.file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(fd, "wb") as output:
-            output.write(payload)
-    else:
-        payload = cipher.decrypt(args.file.read_bytes())
-        scratch = "restore_check_" + uuid4().hex
-        docker("createdb", "-U", "prontuario", scratch)
-        try:
-            docker("pg_restore", "-U", "prontuario", "-d", scratch, "--exit-on-error", input=payload)
-            docker("psql", "-U", "prontuario", "-d", scratch, "-v", "ON_ERROR_STOP=1", "-c",
-                   "SELECT 1 FROM alembic_version; SELECT count(*) FROM audit_events; SELECT count(*) FROM record_permissions;")
-        finally:
-            docker("dropdb", "-U", "prontuario", scratch)
-    print("Operation completed; no production database was overwritten.")
+    with tempfile.TemporaryDirectory() as directory:
+        config = Path(directory) / "mysql.cnf"
+        content = "[client]\n" + "\n".join(f"{key}={quoted(value)}" for key, value in {
+            "host": url.host, "port": url.port or 3306, "user": url.username, "password": url.password or ""
+        }.items()) + "\n"
+        ca = os.getenv("MYSQL_SSL_CA")
+        if os.getenv("APP_ENV") == "production" and not ca:
+            parser.error("Production MySQL backup requires MYSQL_SSL_CA")
+        if ca:
+            content += "ssl-mode=VERIFY_IDENTITY\nssl-ca=/run/mysql-ca.pem\n"
+        config.write_text(content)
+        config.chmod(0o600)
+        docker = ["docker", "run", "--rm", "-i", "--mount", f"type=bind,src={config},dst=/run/mysql.cnf,readonly"]
+        if ca:
+            docker += ["--mount", f"type=bind,src={Path(ca).resolve()},dst=/run/mysql-ca.pem,readonly"]
+        if os.getenv("MYSQL_CLIENT_NETWORK"):
+            docker += ["--network", os.environ["MYSQL_CLIENT_NETWORK"]]
+
+        def client(program, *params, **kwargs):
+            return subprocess.run(docker + ["mysql:8.4", program, "--defaults-extra-file=/run/mysql.cnf", *params], check=True, **kwargs)
+
+        if args.operation == "backup":
+            with tempfile.TemporaryFile() as dump:
+                client("mysqldump", "--single-transaction", "--no-tablespaces", "--set-gtid-purged=OFF", url.database, stdout=dump)
+                dump.seek(0)
+                payload = cipher.encrypt(dump.read())
+            fd = os.open(args.file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "wb") as output:
+                output.write(payload)
+        else:
+            payload = cipher.decrypt(args.file.read_bytes())
+            scratch = "restore_check_" + uuid4().hex
+            client("mysql", "-e", f"CREATE DATABASE `{scratch}`")
+            try:
+                client("mysql", scratch, input=payload)
+                client("mysql", scratch, "-e", "SELECT version_num FROM alembic_version; SELECT count(*) FROM audit_events; SELECT count(*) FROM record_permissions;")
+            finally:
+                client("mysql", "-e", f"DROP DATABASE `{scratch}`")
+    print("Operation completed; configured database was not overwritten.")
 
 
 if __name__ == "__main__":

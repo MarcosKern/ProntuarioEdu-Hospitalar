@@ -33,3 +33,5 @@ Framework Python, ORM/banco, autenticação, toolkit Desktop, tecnologia Web e n
 ## Atualização do ambiente
 
 A [ADR 0002](0002-ambiente-desenvolvimento.md) define FastAPI, SQLAlchemy/SQLite e validação JWT para o desenvolvimento inicial. As pendências de ferramentas acima refletem o momento desta decisão inicial e devem ser lidas com essa atualização.
+
+A [ADR 0004](0004-mysql-externo.md) substitui as escolhas anteriores de banco por MySQL externo.
