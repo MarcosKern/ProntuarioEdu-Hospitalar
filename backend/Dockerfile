@@ -1,4 +1,6 @@
-FROM python:3.12-slim
+# Python 3.12 on Alpine 3.23, pinned to the verified upstream manifest.
+# Refresh the digest regularly and scan the complete image before merging.
+FROM python:3.12-alpine3.23@sha256:a4ad86fc2eaa4f9a5c3153776c9fb56e502dbd8e23dfa855d164308f376a6dd2
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/src
 WORKDIR /app
 COPY requirements.txt ./
@@ -6,7 +8,7 @@ COPY requirements.txt ./
 RUN --mount=type=secret,id=proxy_ca \
     if [ -f /run/secrets/proxy_ca ]; then export PIP_CERT=/run/secrets/proxy_ca; fi; \
     python -m pip install --no-cache-dir -r requirements.txt
-RUN useradd --create-home app && mkdir -p /app/data && chown app:app /app/data
+RUN adduser -D -u 1000 app
 COPY --chown=app:app src ./src
 COPY --chown=app:app migrations ./migrations
 COPY --chown=app:app alembic.ini ./

@@ -41,3 +41,11 @@ Local: `python -m pytest -q`, `python -m ruff check src tests scripts` e `python
 ## Produção: requisitos ainda externos
 
 Configurar provedor OIDC e permissões reais; TLS e gateway; segredos gerenciados; usuários de banco mínimos separados; Redis privado com autenticação/TLS; métricas privadas e alertas; retenção aprovada e rotina de backup. A infraestrutura implementada não significa que o produto esteja liberado para dados clínicos reais.
+
+## Base da imagem e correções de sistema
+
+A imagem usa Python 3.12 com Alpine 3.23, fixada por digest no Dockerfile. A escolha substitui a base Debian que apresentou vulnerabilidades HIGH em bibliotecas do sistema. Alpine usa musl em vez de glibc: novas dependências nativas precisam ser verificadas nessa plataforma. Não copiar bibliotecas binárias de imagens Debian para essa imagem.
+
+O usuário de execução continua sem privilégios (UID 1000, preservando o usuário anterior de desenvolvimento). O MySQL permanece externo, usando PyMySQL. A mudança de distribuição não muda o contrato HTTP nem as regras MVC. Dependências continuam fixadas em requirements.txt; a CI verifica a imagem completa com a mesma política de vulnerabilidades e segredos.
+
+Manter a base atualizada: consultar a imagem oficial Python 3.12/Alpine, verificar o novo digest, reconstruir, executar testes incluindo MySQL e repetir o scan completo. Um resultado limpo em HIGH/CRITICAL é uma observação daquela base de vulnerabilidades e imagem, não garantia permanente ou ausência de achados menores. Não usar ignore-unfixed, supressões globais ou remoção do scan para liberar a imagem.
