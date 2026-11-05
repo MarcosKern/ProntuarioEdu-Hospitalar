@@ -18,7 +18,12 @@ jobs:
           MYSQL_DATABASE: prontuario_test
           MYSQL_ROOT_HOST: "%"
         ports: ['3306:3306']
-        options: --health-cmd 'mysqladmin ping -h localhost' --health-interval 5s --health-retries 10
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-start-period=30s
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
     env:
       MYSQL_TEST_URL: mysql+pymysql://root:ci-root-only-ephemeral@127.0.0.1:3306/prontuario_test
       DATABASE_URL: mysql+pymysql://root:ci-root-only-ephemeral@127.0.0.1:3306/prontuario_test
@@ -42,7 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t prontuario-backend:ci backend
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
           image-ref: prontuario-backend:ci
           scanners: vuln,secret
