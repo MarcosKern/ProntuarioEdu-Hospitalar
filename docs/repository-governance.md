@@ -2,7 +2,11 @@
 
 ## Estado atual
 
-As regras abaixo são requisitos do projeto. Ainda não foram aplicadas no GitHub: a tentativa de criação de ruleset retornou `Resource not accessible by integration` (HTTP 403). A leitura da API funciona, mas a integração não tem escrita administrativa. Este documento e `AGENTS.md` orientam o trabalho local, mas não bloqueiam ações no servidor.
+O ruleset Branch (26643855) está ativo. A leitura confirmou quatro aprovações, invalidação após push, aprovação do último push, resolução de conversas e checks test/image do GitHub Actions. Seu escopo atual é **todas as branches**, inclusive branches de trabalho.
+
+A configuração remota também exige CodeQL/code_quality e contém novamente Copilot. A tentativa desta tarefa de remover somente Copilot recebeu HTTP 403 (`Resource not accessible by integration`). Nenhuma regra remota foi alterada. A revisão apenas pelo Codex continua sendo o requisito; a ativação própria do Codex e a configuração nativa de qualidade precisam ser conferidas pelo administrador.
+
+O workflow CodeQL Python foi preparado no repositório para produzir a análise, sem remover o gate exigido. Default setup CodeQL não pôde ser consultado por falta de permissão. Se já estiver ativo, evitar duplicação com o workflow avançado. Preparar arquivo não comprova que o serviço executou ou que o merge está liberado.
 
 ## Proteção para merge
 
@@ -42,8 +46,16 @@ Implementar um check obrigatório que valide a ADR aplicável e sua aprovação 
 
 ## Conclusão administrativa pendente
 
-Aplicar e testar os rulesets com acesso administrativo à API/interface do GitHub; habilitar a integração do Codex; definir responsáveis pela arquitetura e pela autorização de branches; implementar os checks; testar um PR permitido e casos bloqueados. Nenhuma dessas proteções deve ser declarada ativa até essa validação.
+As regras de PR e os checks test/image estão ativos. Permanecem pendentes a remoção do Copilot, a verificação da revisão do Codex, a execução de CodeQL/qualidade e um gate verificável de aprovação arquitetural. A validação de autorização por operação de branch exige fluxo próprio; não é fornecida automaticamente pelo ruleset.
 
 ## Configuração concreta para o administrador
 
-`github-ruleset.json` contém o ruleset de main/releases com quatro aprovações e bloqueio de exclusão/force push, sem bypass. Após conferir os requisitos e ter credencial administrativa adequada, aplicar da raiz com `gh api --method POST repos/MarcosKern/ProntuarioEdu-Hospitalar/rulesets --input docs/github-ruleset.json`. Conferir rulesets existentes antes para evitar duplicação. O arquivo não configura revisão do Codex nem check de arquitetura inexistente. O responsável mantém a configuração do code review conforme combinado. Nenhuma proteção remota foi declarada ativa.
+`github-ruleset.json` preserva todas as regras atualmente observadas e remove somente Copilot; não elimina CodeQL, code_quality ou as aprovações. Para atualizar o ruleset existente com credencial administrativa, conferir primeiro seu conteúdo atual e executar da raiz:
+
+```bash
+gh api --method PUT repos/MarcosKern/ProntuarioEdu-Hospitalar/rulesets/26643855 --input docs/github-ruleset.json
+```
+
+Não usar POST para essa atualização, pois criaria uma regra duplicada. O ruleset abrange todas as branches: validar o fluxo de atualização de PRs e decidir com o responsável se regras de merge devem ficar apenas em main/releases, mantendo exclusão/force push bloqueados para todas. Não criar bypass permanente que contorne as aprovações.
+
+O arquivo não ativa o Codex nem implementa um gate de aprovação arquitetural. Essas integrações dependem de configuração e critérios verificáveis próprios. Não remover gates de segurança apenas para obter CI verde.

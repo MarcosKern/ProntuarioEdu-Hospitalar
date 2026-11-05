@@ -1,12 +1,13 @@
 # Testar o Back-end
 
-Execute de `backend`, com o venv já preparado e as dependências de `requirements.txt` instaladas. Os comandos são os mesmos da CI:
+Execute de `backend`, com o venv já preparado e as dependências de `requirements-dev.txt` instaladas. Os comandos são os mesmos da CI:
 
 ```bash
 python -m ruff check src tests scripts
 python -m pip check
 python -m pytest -q
 python -m pip_audit -r requirements.txt
+python -m pip_audit -r requirements-dev.txt
 ```
 
 No PowerShell sem ativação, use `.\.venv\Scripts\python.exe` no lugar de `python`.
@@ -48,3 +49,5 @@ Sem MYSQL_TEST_URL, testes dependentes de banco são **pulados**, não aprovados
 | `contract/` | Reservado para cobertura completa de contratos futuros |
 
 Os testes OIDC usam chaves isoladas; não comprovam login/logout no provedor externo. Os testes existentes também não representam cobertura de funcionalidades clínicas ainda não implementadas. Consulte [MYSQL.md](../MYSQL.md#testes) e [SECURITY.md](../SECURITY.md).
+
+A suíte operacional também verifica os timeouts enviados ao driver SQL, os schemas OpenAPI das respostas de erro e a ausência de valores sensíveis em diagnósticos de falhas internas.
