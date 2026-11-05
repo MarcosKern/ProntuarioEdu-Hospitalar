@@ -26,7 +26,9 @@ jobs:
           --health-retries=20
     env:
       MYSQL_TEST_URL: mysql+pymysql://root:ci-root-only-ephemeral@127.0.0.1:3306/prontuario_test
-      DATABASE_URL: mysql+pymysql://root:ci-root-only-ephemeral@127.0.0.1:3306/prontuario_test
+      MYSQL_TEST_ALLOW_RESET: prontuario_test
+      # Application bootstrap URL is never used for test SQL.
+      DATABASE_URL: mysql+pymysql://unused@127.0.0.1:3306/prontuario_application_not_used
     defaults:
       run:
         working-directory: backend

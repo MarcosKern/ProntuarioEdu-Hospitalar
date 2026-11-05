@@ -1,21 +1,25 @@
 import os
 
-# Collection must not require a real application connection or read a developer secret.
+from dotenv import dotenv_values
+
+APPLICATION_DATABASE_URLS = (os.getenv("DATABASE_URL"), dotenv_values(".env").get("DATABASE_URL"))
+
+# Collection must not open a real application connection. Never print configured URLs.
 os.environ.setdefault("DATABASE_URL", "mysql+pymysql://unused@127.0.0.1/prontuario_test")
 
 import pytest
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
 
 from prontuario_backend.config.database import engine_for
 from prontuario_backend.config.settings import get_settings
+from tests.safety import validate_test_database
 
 
 @pytest.fixture(autouse=True)
 def isolated_settings(monkeypatch):
     url = os.getenv("MYSQL_TEST_URL")
     if url:
-        assert make_url(url).database.startswith("prontuario_test"), "A dedicated test database is required"
+        validate_test_database(url, APPLICATION_DATABASE_URLS, os.getenv("MYSQL_TEST_ALLOW_RESET"))
         admin = create_engine(url)
         with admin.begin() as connection:
             # Only reset the explicitly designated disposable test database.

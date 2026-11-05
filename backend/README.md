@@ -221,9 +221,9 @@ python -m pytest -q
 python -m pip_audit -r requirements.txt
 ```
 
-O comando acima roda testes sem banco e pula explicitamente os que exigem `MYSQL_TEST_URL` ausente. Para testar MySQL, configure essa variável no ambiente do terminal apontando para **outro banco descartável**, cujo nome comece com `prontuario_test`. Veja [testes](tests/README.md). Não use o banco de desenvolvimento ou produção: os testes apagam tabelas técnicas entre os casos.
+O comando acima roda testes sem banco e pula explicitamente os que exigem `MYSQL_TEST_URL` ausente. Para testar MySQL, configure essa variável no ambiente do terminal apontando para **outro banco descartável**, mais `MYSQL_TEST_ALLOW_RESET` igual ao nome exato desse banco, cujo nome comece com `prontuario_test`. Veja [testes](tests/README.md). Não use o banco de desenvolvimento ou produção: os testes apagam tabelas técnicas entre os casos.
 
-`MYSQL_TEST_URL` deve estar **exportada no processo**; colocá-la somente em `.env` não basta para a suíte atual. A CI já fornece a variável e inicia seu próprio MySQL descartável. Ruff e pytest devem ser executados de `backend`, como na CI.
+`MYSQL_TEST_URL` deve estar **exportada no processo**; colocá-la somente em `.env` não basta para a suíte atual. A limpeza é recusada se o alvo coincidir com o banco da aplicação ou faltar a confirmação. A CI já fornece a variável e inicia seu próprio MySQL descartável. Ruff e pytest devem ser executados de `backend`, como na CI.
 
 ### Build com proxy
 

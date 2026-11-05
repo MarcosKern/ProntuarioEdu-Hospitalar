@@ -40,6 +40,8 @@ def main():
             "host": url.host, "port": url.port or 3306, "user": url.username, "password": url.password or ""
         }.items()) + "\n"
         ca = os.getenv("MYSQL_SSL_CA")
+        if os.getenv("APP_ENV") == "production" and not ca:
+            parser.error("Production MySQL backup requires MYSQL_SSL_CA")
         if ca:
             content += "ssl-mode=VERIFY_IDENTITY\nssl-ca=/run/mysql-ca.pem\n"
         config.write_text(content)

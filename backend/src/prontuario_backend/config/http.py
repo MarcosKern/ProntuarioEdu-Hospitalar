@@ -6,6 +6,8 @@ from uuid import uuid4
 
 from prometheus_client import CollectorRegistry, Counter, Histogram
 from redis.asyncio import Redis
+from redis.asyncio.retry import Retry
+from redis.backoff import NoBackoff
 from redis.exceptions import RedisError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -18,7 +20,18 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.settings = settings
         self.windows = {}
-        self.redis = Redis.from_url(settings.redis_url.get_secret_value()) if settings.redis_url else None
+        self.redis = None
+        if settings.redis_url:
+            options = {
+                "socket_connect_timeout": settings.redis_connect_timeout,
+                "socket_timeout": settings.redis_socket_timeout,
+                "retry": Retry(NoBackoff(), 0),
+            }
+            if settings.redis_url.get_secret_value().startswith("rediss://"):
+                options.update(ssl_cert_reqs="required", ssl_check_hostname=True)
+                if settings.redis_ssl_ca:
+                    options["ssl_ca_certs"] = settings.redis_ssl_ca
+            self.redis = Redis.from_url(settings.redis_url.get_secret_value(), **options)
         self.registry = CollectorRegistry()
         self.count = Counter("http_requests_total", "Requests", ["route", "status"], registry=self.registry)
         self.duration = Histogram("http_duration_seconds", "Duration", ["route"], registry=self.registry)
@@ -49,10 +62,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if response is None:
             body = bytearray()
             async for chunk in request.stream():
-                body.extend(chunk)
-                if len(body) > self.settings.max_body_bytes:
+                if len(body) + len(chunk) > self.settings.max_body_bytes:
                     response = JSONResponse({"error": {"code": "body_too_large", "request_id": request_id}}, 413)
                     break
+                body.extend(chunk)
             if response is None:
                 request._body = bytes(body)
                 try:

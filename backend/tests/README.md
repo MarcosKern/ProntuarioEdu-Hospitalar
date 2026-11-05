@@ -13,11 +13,13 @@ No PowerShell sem ativação, use `.\.venv\Scripts\python.exe` no lugar de `pyth
 
 ## Testes com MySQL
 
-Os testes de integração precisam de `MYSQL_TEST_URL` no **ambiente do processo**. O banco deve ser exclusivo de testes, descartável, com nome iniciado por `prontuario_test` e permissão para criar/apagar tabelas e triggers. O servidor pode ser o mesmo do desenvolvimento se houver autorização do responsável, mas o banco deve ser diferente.
+Os testes de integração precisam de `MYSQL_TEST_URL` e `MYSQL_TEST_ALLOW_RESET` no **ambiente do processo**. O banco deve ser exclusivo de testes, descartável, com nome iniciado por `prontuario_test` e permissão para criar/apagar tabelas e triggers. O servidor pode ser o mesmo do desenvolvimento se houver autorização do responsável, mas o banco deve ser diferente.
+
+**Confirmação obrigatória:** `MYSQL_TEST_ALLOW_RESET` deve ser exatamente o nome do banco de teste (por exemplo, `prontuario_test`). Sem essa confirmação, a suíte recusa qualquer limpeza. A conexão também não pode apontar ao mesmo host/porta/banco de `DATABASE_URL` da aplicação, mesmo com outro usuário; localhost e loopback são tratados como o mesmo host.
 
 **A fixture apaga `audit_events`, `record_permissions` e `alembic_version` antes de cada teste quando MYSQL_TEST_URL está definida. Nunca use uma URL do banco de aplicação.** Não executar a suíte em paralelo contra o mesmo banco.
 
-Uma forma de fornecer a variável sem colocá-la no histórico é criar privadamente `backend/.env.test` contendo somente `MYSQL_TEST_URL` com sua conexão de teste. Esse arquivo já é ignorado. Rode então:
+Uma forma de fornecer a variável sem colocá-la no histórico é criar privadamente `backend/.env.test` contendo `MYSQL_TEST_URL` com sua conexão de teste e `MYSQL_TEST_ALLOW_RESET` com o nome exato desse banco. Esse arquivo já é ignorado. Rode então:
 
 ```bash
 python -m dotenv -f .env.test run -- python -m pytest -q
@@ -29,7 +31,9 @@ No PowerShell sem ativação do venv, use os dois caminhos explicitamente:
 .\.venv\Scripts\python.exe -m dotenv -f .env.test run -- .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-A CLI dotenv já está disponível pelas dependências instaladas. O arquivo `.env.test` não é carregado automaticamente por pytest; o comando acima injeta sua variável no processo. Se o servidor exigir CA, configure `MYSQL_SSL_CA` correspondente; a verificação de TLS não deve ser desativada. Variáveis já exportadas e o `.env` também podem afetar settings: mantenha a configuração de teste separada e revise os destinos privadamente.
+A CLI dotenv já está disponível pelas dependências instaladas. Nunca atribua a conexão de teste a `DATABASE_URL` da aplicação. A fixture a substitui internamente após validar os destinos. Nomes DNS diferentes podem apontar ao mesmo servidor: mantenha os nomes do ambiente consistentes e confirme o isolamento com o operador.
+
+O arquivo `.env.test` não é carregado automaticamente por pytest; o comando acima injeta sua variável no processo. Se o servidor exigir CA, configure `MYSQL_SSL_CA` correspondente; a verificação de TLS não deve ser desativada. Variáveis já exportadas e o `.env` também podem afetar settings: mantenha a configuração de teste separada e revise os destinos privadamente.
 
 Sem MYSQL_TEST_URL, testes dependentes de banco são **pulados**, não aprovados. A CI fornece MySQL exclusivo do runner e executa esses testes. Os dados transitórios usados na suíte não são carregados na aplicação; não há seed de usuários ou prontuários.
 

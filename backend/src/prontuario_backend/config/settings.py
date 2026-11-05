@@ -1,8 +1,9 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
-from pydantic import SecretStr, ValidationError, model_validator
+from pydantic import Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +13,9 @@ class Settings(BaseSettings):
     database_url: SecretStr
     mysql_ssl_ca: str = ""
     redis_url: SecretStr | None = None
+    redis_ssl_ca: str = ""
+    redis_connect_timeout: float = Field(default=2, gt=0, le=30)
+    redis_socket_timeout: float = Field(default=2, gt=0, le=30)
     allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
     cors_origins: list[str] = []
     max_body_bytes: int = 1048576
@@ -33,7 +37,24 @@ class Settings(BaseSettings):
                 raise ValueError("OIDC requires HTTPS")
         if not self.database_url.get_secret_value().startswith("mysql+pymysql://"):
             raise ValueError("MySQL with PyMySQL is required")
+        db_query = parse_qs(urlsplit(self.database_url.get_secret_value()).query)
+        if any(key.lower().startswith("ssl") for key in db_query):
+            raise ValueError("Use MYSQL_SSL_CA instead of URL TLS overrides")
+        for ca in (self.mysql_ssl_ca, self.redis_ssl_ca):
+            if ca and not Path(ca).is_file():
+                raise ValueError("Configured CA must be a readable file")
+        if self.redis_url:
+            redis = urlsplit(self.redis_url.get_secret_value())
+            if redis.scheme not in {"redis", "rediss"} or not redis.hostname:
+                raise ValueError("Invalid Redis URL")
+            reserved = {"ssl_cert_reqs", "ssl_check_hostname", "socket_timeout", "socket_connect_timeout", "retry_on_timeout"}
+            if reserved.intersection(key.lower() for key in parse_qs(redis.query)):
+                raise ValueError("Configure Redis TLS and timeouts through settings")
         if self.app_env == "production":
+            if not self.mysql_ssl_ca:
+                raise ValueError("Production MySQL requires a trusted CA")
+            if self.redis_url and urlsplit(self.redis_url.get_secret_value()).scheme != "rediss":
+                raise ValueError("Production Redis requires TLS")
             if not self.redis_url or not all((self.oidc_issuer, self.oidc_audience, self.oidc_jwks_url, self.oidc_authorization_url, self.oidc_token_url)):
                 raise ValueError("Production requires Redis and OIDC")
             if any(not origin.startswith("https://") for origin in self.cors_origins):

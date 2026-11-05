@@ -67,7 +67,9 @@ def test_migrations_empty_database_and_deny_by_default(mysql_url):
 def test_production_hides_docs_and_metrics(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("DATABASE_URL", "mysql+pymysql://unused@localhost/unused")
-    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("REDIS_URL", "rediss://localhost:6379/0")
+    import certifi
+    monkeypatch.setenv("MYSQL_SSL_CA", certifi.where())
     for key in ("OIDC_ISSUER", "OIDC_JWKS_URL", "OIDC_AUTHORIZATION_URL", "OIDC_TOKEN_URL"):
         monkeypatch.setenv(key, "https://identity.example.test/endpoint")
     monkeypatch.setenv("OIDC_AUDIENCE", "test-only")

@@ -42,7 +42,7 @@ A nova revisão cria triggers de auditoria MySQL e comparação de subject sens�
 
 ## Testes
 
-Use um banco MySQL vazio, descartável, cujo nome comece com `prontuario_test`. Configure MYSQL_TEST_URL de forma segura e execute `python -m pytest -q`. **Os testes apagam as tabelas técnicas desse banco entre casos. Nunca aponte MYSQL_TEST_URL ao banco de aplicação.** Não há sementes ou dados de demonstração na aplicação; entradas de teste ficam somente no banco isolado.
+Use um banco MySQL vazio, descartável, cujo nome comece com `prontuario_test`. Configure MYSQL_TEST_URL de forma segura, confirme a limpeza com MYSQL_TEST_ALLOW_RESET igual ao nome do banco descartável e execute `python -m pytest -q`. **Os testes apagam as tabelas técnicas desse banco entre casos. Nunca aponte MYSQL_TEST_URL ao banco de aplicação.** Não há sementes ou dados de demonstração na aplicação; entradas de teste ficam somente no banco isolado.
 
 Sem MYSQL_TEST_URL, os testes que precisam de banco são explicitamente pulados; os demais continuam disponíveis. A CI inicia MySQL exclusivo do runner. O Compose de aplicação não usa esse serviço.
 
@@ -78,3 +78,9 @@ docker compose -f compose.yaml -f compose.tls.yaml ps
 O arquivo é montado somente para leitura em `/run/mysql-ca.pem`. Use os mesmos dois `-f` nos comandos de logs, recriação e encerramento deste modo. O hostname em DATABASE_URL precisa corresponder ao certificado do servidor. O conteúdo da CA não é uma senha, mas não deve ser incorporado à imagem específica de cada desenvolvedor.
 
 Em ambiente de build com proxy, construa primeiro com `--secret id=proxy_ca,...` conforme o README e use `up -d --no-build --wait` com os dois arquivos Compose. O segredo de build e o certificado MySQL são independentes.
+
+## Atualização de segurança da identidade e TLS
+
+A revisão 0003 usa `utf8mb4_0900_bin` (NO PAD) nos subjects OIDC. Ela preserva diferenças de caixa e espaços finais; não normalizar, aparar ou reaproveitar esses identificadores. Models e migração usam a mesma collation. Uma reversão à collation antiga pode falhar se subjects agora distintos colidirem; não remover registros para forçar o downgrade.
+
+Com `APP_ENV=production`, MYSQL_SSL_CA deve indicar uma CA confiável existente e Redis deve usar `rediss://` com verificação de certificado e hostname. Redis pode usar REDIS_SSL_CA para CA privada; sem isso usa a confiança padrão do sistema. URLs não podem desabilitar TLS ou sobrescrever os timeouts por parâmetros. Em desenvolvimento o Compose continua usando Redis privado sem TLS. Não usar esse Compose como implantação de produção.
