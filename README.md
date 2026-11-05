@@ -182,6 +182,8 @@ Os arquivos `.gitkeep` apenas preservam diretórios vazios no Git; não são imp
 | [Visão arquitetural](docs/architecture.md) | Dependências da proposta |
 | [Alternativas](docs/architecture-options.md) | Opções e critérios de escolha |
 
+Os READMEs de cada subpasta detalham suas competências e limites. Veja também a [divisão de responsabilidades entre frentes de desenvolvimento](docs/README.md) e o [exemplo prático do Back-end](backend/README.md#exemplo-prático-registrar-uma-anotação-de-demonstração).
+
 ## 5. Passos a seguir
 
 A sequência abaixo é um plano de desenvolvimento. Ela não indica tarefas já concluídas nem oferece comandos executáveis antes da escolha das ferramentas.
