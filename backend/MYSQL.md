@@ -20,7 +20,7 @@ O endereço precisa ser acessível a partir do contêiner, e não apenas do comp
 
 ## Executar
 
-Instale Python 3.12, crie venv e instale `requirements.txt` como descrito no README. Configure `.env` antes da execução:
+Instale Python 3.12, crie venv e instale `requirements-dev.txt` como descrito no README. Configure `.env` antes da execução:
 
 ```bash
 python scripts/dev.py --setup

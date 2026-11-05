@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = "development"
     database_url: SecretStr
     mysql_ssl_ca: str = ""
+    mysql_connect_timeout: int = Field(default=5, gt=0, le=120)
+    mysql_read_timeout: float = Field(default=10, gt=0, le=120)
+    mysql_write_timeout: float = Field(default=10, gt=0, le=120)
+    mysql_pool_timeout: float = Field(default=5, gt=0, le=120)
     redis_url: SecretStr | None = None
     redis_ssl_ca: str = ""
     redis_connect_timeout: float = Field(default=2, gt=0, le=30)
@@ -38,8 +42,8 @@ class Settings(BaseSettings):
         if not self.database_url.get_secret_value().startswith("mysql+pymysql://"):
             raise ValueError("MySQL with PyMySQL is required")
         db_query = parse_qs(urlsplit(self.database_url.get_secret_value()).query)
-        if any(key.lower().startswith("ssl") for key in db_query):
-            raise ValueError("Use MYSQL_SSL_CA instead of URL TLS overrides")
+        if any(key.lower().startswith("ssl") or key.lower() in {"connect_timeout", "read_timeout", "write_timeout"} for key in db_query):
+            raise ValueError("Configure MySQL TLS and timeouts through settings")
         for ca in (self.mysql_ssl_ca, self.redis_ssl_ca):
             if ca and not Path(ca).is_file():
                 raise ValueError("Configured CA must be a readable file")

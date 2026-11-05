@@ -19,7 +19,7 @@ def main():
     if args.setup:
         if not python.exists():
             venv.EnvBuilder(with_pip=True).create(root / ".venv")
-        subprocess.run([str(python), "-m", "pip", "install", "-r", "requirements.txt"], check=True)
+        subprocess.run([str(python), "-m", "pip", "install", "-r", "requirements-dev.txt"], check=True)
     if not python.exists():
         parser.error("Ambiente ausente. Execute primeiro com --setup.")
     subprocess.run([str(python), "-m", "alembic", "upgrade", "head"], check=True)
