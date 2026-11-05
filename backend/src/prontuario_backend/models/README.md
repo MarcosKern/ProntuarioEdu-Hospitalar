@@ -12,4 +12,4 @@ Aqui entram entidades, validações de negócio e consultas. Não receber objeto
 
 Cobrir a responsabilidade com testes: regras isoladas em `backend/tests/unit/`, comportamento HTTP e persistência em `backend/tests/integration/` e compatibilidade da API em `backend/tests/contract/`. Usar dados sintéticos.
 
-A pasta ainda contém somente documentação. O framework e o banco não foram escolhidos.
+O ambiente inicial usa FastAPI e SQLAlchemy/SQLite. Os arquivos Python desta pasta participam da API de desenvolvimento; funcionalidades clínicas ainda não foram implementadas.

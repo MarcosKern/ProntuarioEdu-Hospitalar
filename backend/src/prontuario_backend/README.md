@@ -8,4 +8,4 @@
 
 Fluxo: rota → Controller → Model → Controller → View → resposta. A View não consulta o Model diretamente; o Controller passa o resultado que pode ser apresentado. Models não importam Controllers ou Views. Não há necessidade de interfaces de repositório ou composição por portas para cada funcionalidade.
 
-São competências conceituais; a conexão exata depende do framework escolhido. Não há aplicação executável ainda.
+A aplicação FastAPI está em `main.py`. O fluxo executável `/health` passa por rota, Controller, Model e View e verifica SQL. `/api/v1/me` demonstra a identificação por token. Veja a instalação e execução no README do Back-end.

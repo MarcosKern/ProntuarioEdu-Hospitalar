@@ -2,7 +2,7 @@
 
 Projeto com **Back-end Python**, **Desktop Python** e **Web responsiva**, com tecnologia Web em aberto. O Back-end adota **MVC**, escolhido para facilitar o aprendizado e o trabalho de uma turma com conhecimento intermediário.
 
-**Estado atual:** pastas e documentação. Não há aplicação executável, dependências de aplicação ou testes implementados. MVC foi escolhido pelo responsável; framework, banco, autenticação e toolkit Desktop ainda precisam ser definidos. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
+**Estado atual:** Back-end MVC inicial executável com FastAPI, Swagger, SQLAlchemy/SQLite e validação OAuth2/OIDC configurável. Desktop e Web ainda são estruturas documentais. O provedor de autenticação real, o toolkit Desktop e a tecnologia Web precisam de configuração/escolha. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
 
 ## Como o sistema funciona
 
@@ -47,7 +47,7 @@ MVC organiza o código; o servidor continua sendo uma aplicação única. Não v
 
 ### Qual framework usar?
 
-A escolha permanece aberta. FastAPI facilita construir APIs e oferece Swagger UI integrado. Django + Django REST Framework oferece ORM, migrações e administração. Django usa a nomenclatura MTV: sua view frequentemente exerce a coordenação que aqui chamamos de Controller. Se for escolhido, o mapeamento será documentado, usando as convenções do framework sem criar camadas duplicadas apenas pelo nome.
+FastAPI foi adotado para o ambiente inicial, com Swagger UI integrado. Django + Django REST Framework oferece ORM, migrações e administração. Django usa a nomenclatura MTV: sua view frequentemente exerce a coordenação que aqui chamamos de Controller. Se for escolhido, o mapeamento será documentado, usando as convenções do framework sem criar camadas duplicadas apenas pelo nome.
 
 ## Estrutura de pastas
 
@@ -120,7 +120,7 @@ O [README do Back-end](backend/README.md#exemplo-prático-registrar-uma-anotaç�
 ## Passos de desenvolvimento
 
 1. **Definir um primeiro fluxo pequeno.** Registrar usuários, permissões, dados necessários e critérios de aceitação, usando dados sintéticos.
-2. **Escolher as ferramentas.** Registrar framework Python, banco/ORM, autenticação e toolkit Desktop na ADR. A escolha de MVC já está feita; Web pode ser decidida em sua etapa.
+2. **Revisar as ferramentas.** FastAPI e SQLAlchemy/SQLite já compõem o ambiente inicial (ADR 0002). Configurar o provedor OAuth2/OIDC e definir toolkit Desktop; Web pode ser decidida em sua etapa.
 3. **Preparar o ambiente.** Fixar versões, dependências e lockfiles; documentar configuração sem segredos e comandos verificados de instalação/testes.
 4. **Combinar o contrato.** Definir caminho, método, entrada, respostas, erros e segurança da primeira operação; configurar a fonte de verdade do OpenAPI.
 5. **Implementar o Model.** Criar dados, regras e persistência; testar as validações e transações relevantes.
@@ -150,7 +150,7 @@ flowchart LR
 | FastAPI | Esquemas tipados e metadados das rotas geram OpenAPI; caminhos padrão `/docs` e `/openapi.json` serão confirmados na configuração |
 | Django + DRF | Avaliar gerador como `drf-spectacular`; serializers e metadados geram schema; rotas propostas `/api/schema/` e `/api/docs/` |
 
-Nenhum desses caminhos existe atualmente. As configurações ficam em `config/`; rotas e esquemas HTTP descrevem entrada e resposta. Essa documentação não deve obrigar Models a conhecer Swagger.
+Os caminhos FastAPI `/docs` e `/openapi.json` já existem; os de Django são apenas referência. As configurações ficam em `config/`; rotas e esquemas HTTP descrevem entrada e resposta. Essa documentação não deve obrigar Models a conhecer Swagger.
 
 ### Como aplicar
 
@@ -166,4 +166,4 @@ Nenhum desses caminhos existe atualmente. As configurações ficam em `config/`;
 
 ## Executar e testar hoje
 
-Ainda não há comandos de instalação, inicialização ou testes da aplicação. Depois da escolha das ferramentas, registrar aqui os comandos efetivamente validados, os serviços necessários e a verificação de funcionamento. A presença das pastas não significa que o sistema já execute.
+O Back-end tem instruções verificadas de venv, instalação, execução local, testes e Docker no [guia do Back-end](backend/README.md#ambiente-de-desenvolvimento-implementado). Execute de `backend`: `python scripts/dev.py --setup`. A configuração inicial está registrada na [ADR 0002](docs/adr/0002-ambiente-desenvolvimento.md). Desktop e Web ainda não têm aplicação executável.

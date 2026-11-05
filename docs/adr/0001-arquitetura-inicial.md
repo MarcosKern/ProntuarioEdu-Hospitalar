@@ -29,3 +29,7 @@ Unitários verificam regras dos Models, coordenação de Controllers e formataç
 ## Decisões pendentes
 
 Framework Python, ORM/banco, autenticação, toolkit Desktop, tecnologia Web e necessidade de offline. A escolha de MVC não aprova uma funcionalidade clínica específica nem essas dependências. Mudanças futuras de arquitetura precisam de revisão e decisão registrada.
+
+## Atualização do ambiente
+
+A [ADR 0002](0002-ambiente-desenvolvimento.md) define FastAPI, SQLAlchemy/SQLite e validação JWT para o desenvolvimento inicial. As pendências de ferramentas acima refletem o momento desta decisão inicial e devem ser lidas com essa atualização.

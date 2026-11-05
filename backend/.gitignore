@@ -1,0 +1,38 @@
+# Ambientes e bytecode
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+# Configuração privada
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+# Dados locais e logs
+data/
+*.db
+*.db-*
+*.sqlite*
+*.log
+logs/
+# Testes, ferramentas e distribuição
+.pytest_cache/
+.coverage*
+htmlcov/
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+build/
+dist/
+*.egg-info/
+# Editores e SO
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+# Não ignorar requirements*.txt, migrações ou arquivos Docker
