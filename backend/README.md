@@ -1,112 +1,96 @@
-# Back-end Python
+# Back-end Python com MVC
 
-Proposta: monólito modular com arquitetura hexagonal. Framework e persistência dependem da ADR inicial.
+O Back-end usará MVC para facilitar a leitura e a divisão do trabalho de uma turma intermediária. Continua sendo um único servidor para Desktop, Web e futuras integrações. MVC organiza o código; não exige dividir o servidor em serviços.
 
-- `src/prontuario_backend/domain`: entidades, objetos de valor e regras de negócio; sem imports de HTTP, banco ou interfaces gráficas.
-- `src/prontuario_backend/application`: casos de uso e portas de entrada/saída; depende do domínio.
-- `src/prontuario_backend/adapters/inbound/http`: tradução de requisições da API para casos de uso.
-- `src/prontuario_backend/adapters/outbound/persistence`: implementação das portas de persistência.
-- `src/prontuario_backend/adapters/outbound/integrations`: implementação das portas de serviços externos.
-- `src/prontuario_backend/bootstrap`: configuração e composição de dependências.
-- `tests/unit`, `tests/integration`, `tests/contract`: locais reservados para as respectivas verificações.
+## Quem faz o quê
 
-Somente o back-end acessa o banco. Autorização e regras de negócio são verificadas no servidor. Novos módulos de domínio devem ser definidos pelos requisitos, sem antecipar funcionalidades clínicas.
-
-Ainda não há aplicação executável, dependências ou testes implementados.
-
-## Como dividir uma funcionalidade
-
-A proposta separa responsabilidades técnicas e permite criar, dentro delas, subpacotes por capacidade de negócio quando os requisitos forem definidos. Evite uma pasta genérica de serviços contendo regras, SQL e HTTP misturados.
-
-| Necessidade | Local responsável | Limite |
+| Pasta em `src/prontuario_backend/` | Competência | Exemplo |
 | --- | --- | --- |
-| Regra válida para qualquer cliente | `domain/` | Não conhece HTTP, ORM ou telas |
-| Coordenar uma operação e sua autorização contextual | `application/` | Usa domínio e portas; não importa adaptadores |
-| Receber JSON, autenticar e responder HTTP | `adapters/inbound/http/` | Não executa SQL nem substitui regras da aplicação |
-| Consultar/gravar e realizar transações | `adapters/outbound/persistence/` | Implementa portas e converte modelos de banco |
-| Consumir outro serviço | `adapters/outbound/integrations/` | Isola SDK, timeout e falhas externas |
-| Escolher e conectar implementações | `bootstrap/` | Não contém regras de negócio |
+| `models/` | Dados, regras de negócio e persistência | Validar e salvar uma anotação |
+| `controllers/` | Receber a operação, verificar acesso e coordenar | Solicitar ao Model a criação após autorizar o usuário |
+| `views/` | Formatar respostas JSON e erros | Retornar apenas identificador e texto permitidos |
+| `routes/` | Conectar URL/método ao Controller | Registrar `POST /api/v1/anotacoes` |
+| `config/` | Inicialização, banco, autenticação e Swagger | Ler a URL do banco do ambiente |
 
-Dependências de código apontam para dentro: adaptadores → aplicação → domínio. A aplicação define as portas de que precisa; os adaptadores implementam essas interfaces. Durante a execução, uma chamada feita por uma porta chega à implementação conectada pelo bootstrap.
+Views do servidor são representações JSON. As telas ficam em Desktop e Web. Models não importam Controllers ou Views. Views recebem dados do Controller, sem consultar o banco. Controllers não devem virar um arquivo enorme com SQL e todas as regras.
+
+## Fluxo de uma operação
+
+```mermaid
+flowchart LR
+    Cliente[Desktop ou Web] --> Rota[Rota HTTP]
+    Rota --> Controller[Controller: verificar acesso e coordenar]
+    Controller --> Model[Model: regras e dados]
+    Model --> Banco[(Banco a definir)]
+    Model --> Controller
+    Controller --> View[View: resposta JSON]
+    View --> Cliente
+```
 
 ## Exemplo prático: registrar uma anotação de demonstração
 
-**Exemplo didático, não requisito clínico aprovado e não endpoint implementado.** Considere uma operação fictícia para adicionar um texto a um registro. Para mostrar as competências, suponha que texto vazio seja inválido e que apenas usuários autorizados possam escrever nesse registro.
+Exemplo fictício para ensinar a divisão; não é uma regra clínica aprovada nem uma API já disponível. Imagine que um usuário autorizado envia um texto para um registro e que texto vazio seja inválido.
 
-```mermaid
-sequenceDiagram
-    participant C as Desktop ou Web
-    participant H as Adaptador HTTP
-    participant A as Caso de uso
-    participant P as Porta de autorização
-    participant D as Domínio
-    participant R as Porta de persistência
-    C->>H: POST com texto e sessão
-    H->>H: Autenticar e validar formato
-    H->>A: Executar com identidade confiável
-    A->>P: Pode escrever neste registro?
-    P-->>A: Permissão concedida
-    A->>D: Criar anotação e validar regra
-    D-->>A: Anotação válida
-    A->>R: Salvar dentro da transação
-    R-->>A: Identificador após sucesso
-    A-->>H: Resultado da operação
-    H-->>C: Resposta documentada no OpenAPI
-```
+1. A rota recebe `POST /api/v1/anotacoes` e encaminha ao Controller.
+2. A autenticação identifica o usuário; o Controller valida formato, registro solicitado e permissão de escrita.
+3. O Model verifica a regra do texto e grava na transação configurada.
+4. O Controller entrega o resultado à View.
+5. A View seleciona os campos públicos e retorna a resposta de sucesso documentada.
 
-### Onde cada parte seria escrita
+### Pseudocódigo por pasta
 
-Os nomes a seguir são uma sugestão para entender a separação; esses arquivos Python **não foram criados**.
-
-| Arquivo futuro | Competência no exemplo |
-| --- | --- |
-| `domain/anotacoes.py` | Construir uma anotação válida e rejeitar texto vazio |
-| `application/registrar_anotacao.py` | Coordenar a autorização, a criação e a gravação |
-| `application/ports.py` | Declarar interfaces de autorização, repositório e unidade de trabalho |
-| `adapters/inbound/http/anotacoes.py` | Traduzir JSON para a entrada do caso de uso e resultado para HTTP |
-| `adapters/outbound/persistence/anotacoes.py` | Implementar consultas, gravação e unidade de trabalho no banco escolhido |
-| `bootstrap/` | Conectar políticas, repositórios e caso de uso à rota |
-
-### Lógica ilustrativa, independente de framework
-
-O pseudocódigo Python abaixo destaca apenas a ordem das responsabilidades. Tipos, classes de erro, portas, transações, limites do texto e estratégia de auditoria precisam ser implementados e aprovados antes de virar código de produção.
+As funções abaixo são ilustrativas: tipos, dependências e tratamento completo de erros não foram implementados. Não são arquivos executáveis.
 
 ```python
-# domain/anotacoes.py
+# models/anotacao.py
 class Anotacao:
-    def __init__(self, registro_id, autor_id, texto):
+    @classmethod
+    def criar(cls, registro_id, autor_id, texto):
         if not texto.strip():
-            raise TextoVazio()
-        self.registro_id = registro_id
-        self.autor_id = autor_id
-        self.texto = texto.strip()
+            raise TextoInvalido("O texto não pode ficar vazio")
+        # O ORM e a transação serão definidos ao escolher o framework.
+        return salvar_anotacao_em_transacao(
+            registro_id=registro_id,
+            autor_id=autor_id,
+            texto=texto.strip(),
+        )
 
 
-# application/registrar_anotacao.py
-class RegistrarAnotacao:
-    def __init__(self, unidade_de_trabalho):
-        self.unidade_de_trabalho = unidade_de_trabalho
+# controllers/anotacoes.py
+def criar_anotacao(requisicao):
+    usuario = exigir_usuario_autenticado(requisicao)
+    entrada = validar_entrada(requisicao.json)
+    exigir_permissao_de_escrita(usuario, entrada.registro_id)
+    anotacao = Anotacao.criar(
+        registro_id=entrada.registro_id,
+        autor_id=usuario.id,
+        texto=entrada.texto,
+    )
+    return resposta_criada(anotacao)
 
-    def executar(self, identidade, registro_id, texto):
-        # A porta abre um contexto transacional. A implementação é externa.
-        with self.unidade_de_trabalho() as uow:
-            uow.autorizacao.exigir_escrita(identidade, registro_id)
-            anotacao = Anotacao(registro_id, identidade.usuario_id, texto)
-            identificador = uow.anotacoes.salvar(anotacao)
-            uow.commit()
-        return identificador
+
+# views/anotacoes.py
+def resposta_criada(anotacao):
+    return {"id": anotacao.id, "texto": anotacao.texto}, 201
 ```
 
-A unidade de trabalho é uma porta: o adaptador concreto deve realizar rollback em falhas e delimitar corretamente a transação. O exemplo coloca a autorização contextual e a gravação na mesma operação; a consistência diante de permissões alteradas concorrentemente também precisa ser definida no adaptador e na política. O identificador só deve ser retornado como sucesso após o commit.
+`validar_entrada`, autenticação, autorização, persistência e as exceções são nomes conceituais. A implementação precisa limitar tamanho do texto, validar identificadores, tratar registro inexistente e garantir consistência entre autorização e gravação. A transação deve confirmar antes de responder sucesso e desfazer alterações em falhas. Erros conhecidos devem virar respostas documentadas, sem expor SQL ou rastros internos.
 
-A identidade vem do mecanismo de autenticação validado no servidor, nunca de um `autor_id` confiado ao JSON do cliente. O HTTP converte erros conhecidos para o contrato aprovado — por exemplo, sessão inválida, acesso negado ou entrada inválida — sem expor exceções SQL. O limite máximo e o formato do texto também devem ser especificados e validados. Nenhuma verificação da tela substitui isso.
+O autor vem da sessão validada, nunca de um campo confiado ao cliente. Os exemplos e os testes usam dados sintéticos. Auditoria, controle por registro, proteção de dados e política de concorrência devem ser definidos antes do uso real.
 
-### Como validar esse fluxo
+## Divisão de trabalho na turma
 
-1. Em `tests/unit/`, verificar texto vazio e construção válida da entidade.
-2. Testar o caso de uso com portas falsas: identidade sem permissão não salva; entrada inválida não salva; sucesso grava e confirma a transação.
-3. Em `tests/integration/`, testar a implementação real de persistência, commit/rollback e escopo de acesso aos registros com banco isolado.
-4. Em `tests/contract/`, verificar o endpoint implementado contra OpenAPI, incluindo respostas de autenticação, autorização e validação.
-5. No Desktop e na Web, apresentar carregamento, confirmação ou erro, sem reenviar escritas automaticamente nem duplicar as regras do servidor.
+- Quem implementa Models cuida das regras, consultas e persistência com seus testes.
+- Quem implementa Controllers cuida dos fluxos, entradas e acesso, combinando os métodos dos Models com a equipe.
+- Quem implementa Views e rotas cuida do contrato JSON, erros e documentação OpenAPI.
+- A equipe combina os formatos antes de trabalhar em paralelo e testa a operação completa no final.
 
-Esses testes são orientações futuras, não testes existentes ou executados. Consulte os READMEs das subpastas para os limites de cada camada.
+Uma pessoa pode atuar em mais de uma frente. A separação orienta onde escrever; não exige uma pessoa para cada pasta. Evitar abstrações extras até surgir uma necessidade concreta.
+
+## Swagger e testes
+
+Rotas e esquemas de entrada/saída alimentam o OpenAPI, apresentado pelo Swagger UI. Views não devem serializar campos privados por padrão. Veja o [README principal](../README.md#swagger-no-back-end).
+
+Em `tests/unit/`, validar texto vazio, coordenação e respostas. Em `tests/integration/`, verificar acesso negado sem gravação e persistência/transação no banco de teste. Em `tests/contract/`, verificar respostas e OpenAPI. Esses testes ainda não existem.
+
+Framework, ORM, banco e mecanismo de autenticação continuam em aberto. Não há comandos de execução ou dependências instaladas.

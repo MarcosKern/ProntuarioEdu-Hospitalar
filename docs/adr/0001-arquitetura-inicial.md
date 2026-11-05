@@ -1,35 +1,31 @@
-# ADR 0001 — Organização inicial e comunicação entre aplicativos
+# ADR 0001 — Back-end MVC e clientes separados
 
-Status: proposta; pendente de aprovação explícita da arquitetura.
+Status: escolha de MVC aprovada pela solicitação explícita do responsável para simplificar a estrutura. Frameworks e decisões técnicas listadas abaixo continuam pendentes.
 
 ## Contexto
 
-Back-end e Desktop usam Python. Web será responsiva, com tecnologia em aberto. A API deve atender também futuros aplicativos. A solicitação atual autoriza criar a organização de pastas; não resolve escolhas de frameworks, banco, toolkit ou operação offline.
+A turma tem conhecimento intermediário e considerou a proposta anterior complexa. Foi solicitado substituir a organização hexagonal do Back-end por MVC e adaptar as pastas e a documentação. A proposta anterior não tinha implementação de aplicação.
 
-## Proposta
+## Decisão
 
-Adotar um monorepositório com `backend`, `desktop`, `web`, `contracts`, `infra` e `docs`. No servidor, usar monólito modular com arquitetura hexagonal: domínio independente, casos de uso, portas e adaptadores. No Desktop, separar apresentação, coordenação dos fluxos e comunicação HTTP. Preservar a organização nativa do framework Web quando escolhido.
+Organizar o Back-end Python em Models (dados e regras), Controllers (coordenação e acesso) e Views (respostas JSON), com rotas e configuração de apoio. Um único servidor oferece API HTTPS compartilhada por Desktop Python, Web responsiva e novos aplicativos. Apenas o servidor acessa seu banco.
 
-Web, Desktop e integrações acessam o servidor por HTTPS e API REST versionada documentada com OpenAPI. Apenas o servidor acessa a persistência. Banco, autenticação e transporte são adaptadores; regras de negócio não dependem deles. O diretório `bootstrap` compõe as implementações concretas.
+Remover as pastas documentais anteriores de domínio, aplicação, adaptadores e bootstrap do Back-end. O Desktop mantém sua organização de cliente já existente; não importa código do servidor. A tecnologia Web continua em aberto.
 
-## Alternativas
+## Alternativas e consequências
 
-- Django + DRF em organização modular: adequado quando administração e funcionalidades integradas forem prioritárias; pode manter os limites propostos.
-- FastAPI: candidato quando o foco principal for uma API; não é dependência instalada.
-- Microsserviços: adiar até haver justificativa de escala, isolamento ou autonomia das equipes; introduzem consistência e operação distribuídas.
+A organização hexagonal foi substituída por aumentar o número de conceitos para o objetivo didático atual. Microsserviços não serão introduzidos. MVC facilita localizar responsabilidades, mas exige disciplina para não acumular regras nos Controllers nem serializar modelos inteiros nas Views. Models podem usar diretamente o ORM escolhido, sem interfaces de repositório obrigatórias.
+
+MVC descreve organização interna; o servidor continua uma aplicação única. Não há necessidade de substituir frameworks para aplicar essa decisão, pois nenhum foi instalado.
 
 ## Contratos e segurança
 
-Definir fonte de verdade do OpenAPI, erros padronizados, paginação e compatibilidade antes da primeira API. Aplicar autorização no servidor. Avaliar OIDC/OAuth2 e PKCE para clientes públicos e sessão segura para Web, sem segredos embutidos nos clientes. Definir auditoria, proteção de dados sensíveis, retenção, backup e recuperação conforme os requisitos reais. Exemplos e testes devem usar dados sintéticos.
+Definir OpenAPI como contrato público, usando geração de esquema conforme o framework escolhido e Swagger UI para visualização. Controllers usam identidade autenticada e verificam acesso aos registros; Models validam regras; Views expõem apenas campos públicos. Autor, papel e permissão enviados pelo cliente não são prova de autorização. Definir transações, auditoria, proteção de dados e recuperação antes de produção.
 
-## Estratégia de testes
+## Testes
 
-Domínio e casos de uso terão testes unitários; adaptadores terão testes de integração com serviços de teste; API terá testes de contrato; clientes terão testes de fluxos e integração. Avaliar testes de ponta a ponta e acessibilidade para os fluxos principais. As pastas presentes são reservas: nenhum teste foi implementado ou executado nesta etapa.
+Unitários verificam regras dos Models, coordenação de Controllers e formatação de Views. Integração verifica API, autorização e persistência em ambiente isolado. Contrato verifica compatibilidade com OpenAPI. Testes ainda não implementados.
 
-## Consequências
+## Decisões pendentes
 
-Uma API central permite vários clientes e mantém regras no servidor. Limites de importação precisam ser revisados e futuramente verificados por automação. Não compartilhar modelos de banco com clientes. Desktop offline exige ADR própria para sincronização, conflitos e dados locais.
-
-## Aprovação pendente
-
-O responsável deve aprovar ou revisar a proposta e escolher framework Python, persistência, toolkit Desktop, autenticação e necessidade de offline. A tecnologia Web permanece em aberto. Até a aprovação, a estrutura é um esqueleto documental sem lógica de aplicação ou dependências.
+Framework Python, ORM/banco, autenticação, toolkit Desktop, tecnologia Web e necessidade de offline. A escolha de MVC não aprova uma funcionalidade clínica específica nem essas dependências. Mudanças futuras de arquitetura precisam de revisão e decisão registrada.

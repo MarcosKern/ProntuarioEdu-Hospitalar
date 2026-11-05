@@ -1,259 +1,169 @@
 # ProntuarioEdu-Hospitalar
 
-Projeto dividido em **Back-end Python**, **Desktop Python** e **Web responsiva**, cuja tecnologia permanece em aberto. O servidor deve atender os dois clientes e permitir integrar novos aplicativos sem duplicar regras de negócio.
+Projeto com **Back-end Python**, **Desktop Python** e **Web responsiva**, com tecnologia Web em aberto. O Back-end adota **MVC**, escolhido para facilitar o aprendizado e o trabalho de uma turma com conhecimento intermediário.
 
-**Estado atual:** estrutura de pastas e documentação. Ainda não há aplicação executável, dependências de aplicação ou testes implementados. A arquitetura descrita é uma proposta, pendente de aprovação na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
+**Estado atual:** pastas e documentação. Não há aplicação executável, dependências de aplicação ou testes implementados. MVC foi escolhido pelo responsável; framework, banco, autenticação e toolkit Desktop ainda precisam ser definidos. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
 
-## 1. Visão geral: como as partes se comunicam
+## Como o sistema funciona
 
-O Desktop e a Web são interfaces para o mesmo sistema. Ambos enviam requisições à API do Back-end, que verifica permissões, executa regras e acessa os dados. Um aplicativo integrado futuramente usa essa mesma fronteira pública.
+Desktop, Web e futuros aplicativos usam a mesma API HTTPS. O servidor verifica acesso, aplica regras e acessa o banco. Os clientes cuidam da experiência do usuário e não acessam diretamente os dados do servidor.
 
 ```mermaid
 flowchart LR
-    Desktop[Desktop Python] -->|HTTPS| API[API do Back-end Python]
-    Web[Web responsiva: computador e celular] -->|HTTPS| API
-    App[Outros aplicativos] -->|HTTPS| API
-    API --> Regras[Casos de uso e regras de negócio]
-    Regras --> Persistencia[Adaptador de persistência]
-    Persistencia --> Banco[(Banco a definir)]
+    Desktop[Desktop Python] --> API[API Python MVC]
+    Web[Web: computador e celular] --> API
+    Apps[Outros aplicativos] --> API
+    API --> Banco[(Banco a definir)]
 ```
 
-Por exemplo, ao solicitar uma operação no prontuário, a interface coleta os dados; o servidor decide se o usuário pode executar a operação e se os dados respeitam as regras. A resposta pode ser apresentada de maneiras diferentes no Desktop e no celular, sem mudar a regra do servidor.
+A API seguirá contratos HTTP descritos por OpenAPI. Assim, os clientes conhecem entradas, respostas e erros sem depender do código interno do Back-end.
 
-A proposta usa **REST**, uma forma de organizar operações HTTP, e **OpenAPI**, uma descrição dos caminhos, entradas, saídas e erros da API. Esses contratos permitem construir clientes independentes. Banco e credenciais do servidor não ficam acessíveis aos clientes.
+## MVC explicado de forma simples
 
-## 2. Arquiteturas consideradas
+MVC significa **Model, View e Controller**. Cada parte tem uma responsabilidade fácil de localizar.
 
-Os termos descrevem decisões diferentes e podem ser combinados:
-
-| Decisão | Pergunta que responde | Opções |
+| Parte | Pergunta que responde | Exemplo |
 | --- | --- | --- |
-| Distribuição | Quantas aplicações de servidor são implantadas separadamente? | Monólito ou microsserviços |
-| Organização interna | Como separar regras e detalhes técnicos? | Módulos, camadas e arquitetura hexagonal |
-| Framework | Quais ferramentas implementam HTTP e recursos da aplicação? | FastAPI ou Django + Django REST Framework, por exemplo |
-| Comunicação | Como clientes e serviços trocam informações? | REST; eventos quando necessários |
+| Model | Quais são os dados e suas regras? | Validar e salvar uma anotação |
+| Controller | O que deve acontecer nesta requisição? | Verificar acesso e pedir a criação ao Model |
+| View | Como apresentar o resultado? | Montar JSON com os campos públicos |
 
-### 2.1. Monólito modular: um servidor, responsabilidades separadas
-
-O Back-end é implantado como uma aplicação, mas seu código é dividido em módulos com responsabilidades claras. Os módulos de negócio serão definidos a partir dos requisitos reais; criar uma pasta para cada módulo não basta, é preciso controlar suas dependências.
-
-```mermaid
-flowchart TB
-    API[API compartilhada] --> A[Módulo de negócio A]
-    API --> B[Módulo de negócio B]
-    subgraph Servidor[Uma aplicação de Back-end]
-        A --> Dados[Adaptadores de persistência]
-        B --> Dados
-    end
-    Dados --> Banco[(Banco)]
-```
-
-As letras representam módulos ainda não escolhidos. Cada módulo expõe operações claras; outro módulo não deve acessar seus detalhes internos sem um contrato definido.
-
-**Quando usar:** início do projeto e equipe que precisa evoluir o produto com implantação simples. Facilita testes e operações que precisam de uma única transação. **Cuidado:** sem limites claros, os módulos se tornam dependentes uns dos outros e mudanças pequenas passam a afetar todo o sistema.
-
-### 2.2. Arquitetura hexagonal: regras no centro, tecnologias nas bordas
-
-A arquitetura hexagonal, também chamada de **portas e adaptadores**, organiza o código para que as regras de negócio não dependam de um framework HTTP, banco de dados ou interface gráfica. Ela pode ser usada dentro de um monólito ou de um microsserviço.
-
-- **Domínio:** conceitos e regras do negócio, escritos em Python sem dependência de HTTP ou banco.
-- **Aplicação:** casos de uso que coordenam uma operação e definem as portas necessárias.
-- **Portas:** interfaces que descrevem capacidades, como carregar ou salvar dados, sem escolher sua implementação.
-- **Adaptadores de entrada:** recebem requisições externas e chamam os casos de uso.
-- **Adaptadores de saída:** implementam portas usando banco ou serviços externos.
-- **Bootstrap:** conecta as implementações concretas ao iniciar a aplicação.
+No nosso Back-end, **View é uma resposta da API**, não uma tela. Desktop e Web montam suas próprias telas a partir desse JSON. Rotas ligam URLs aos Controllers; configuração inicializa o servidor e o banco.
 
 ```mermaid
 flowchart LR
-    HTTP[Adaptador de entrada HTTP] --> Caso[Caso de uso]
-    Caso --> Dominio[Domínio]
-    Caso --> Porta[Porta de persistência]
-    Adaptador[Adaptador de banco] -. implementa .-> Porta
-    Adaptador --> Banco[(Banco)]
-    Bootstrap[Bootstrap] -. conecta as implementações .-> HTTP
-    Bootstrap -. conecta as implementações .-> Adaptador
+    Cliente[Desktop ou Web] --> Rota[Rota: caminho e método HTTP]
+    Rota --> Controller[Controller: validar entrada e acesso]
+    Controller --> Model[Model: regras e persistência]
+    Model --> Banco[(Banco)]
+    Model --> Controller
+    Controller --> View[View: JSON e status HTTP]
+    View --> Cliente
 ```
 
-O diagrama mostra dependências: o caso de uso conhece a porta, e o adaptador implementa essa porta. Durante a execução, o caso de uso chama a implementação conectada pelo bootstrap. O domínio não precisa saber qual banco foi escolhido.
+O Controller recebe a requisição e coordena; não concentra SQL ou todas as regras. O Model pode usar o ORM escolhido para persistir dados, mas não importa Controllers ou Views. A View recebe dados preparados pelo Controller e não consulta o banco. A autenticação identifica o usuário; a autorização verifica se ele pode executar aquela operação naquele registro.
 
-**Quando usar:** regras que precisam ser testadas e evoluir sem ficar presas à infraestrutura. **Cuidado:** criar interfaces e camadas para toda função gera trabalho sem benefício; usar portas nas fronteiras que realmente precisam de separação.
+MVC organiza o código; o servidor continua sendo uma aplicação única. Não vamos dividir o projeto em microsserviços nem exigir interfaces de repositório para cada operação. O objetivo é ter responsabilidades claras com poucas camadas.
 
-**Recomendação em avaliação:** combinar monólito modular e arquitetura hexagonal no Back-end. Um define a distribuição; o outro organiza as dependências internas.
+### Qual framework usar?
 
-### 2.3. Django modular com API REST: recursos integrados
+A escolha permanece aberta. FastAPI facilita construir APIs e oferece Swagger UI integrado. Django + Django REST Framework oferece ORM, migrações e administração. Django usa a nomenclatura MTV: sua view frequentemente exerce a coordenação que aqui chamamos de Controller. Se for escolhido, o mapeamento será documentado, usando as convenções do framework sem criar camadas duplicadas apenas pelo nome.
 
-Django oferece estrutura de aplicação, ORM para persistência, migrações e administração. Django REST Framework (DRF) acrescenta recursos para APIs. O projeto pode ser dividido em módulos Django e também manter domínio e casos de uso separados.
-
-```mermaid
-flowchart LR
-    Clientes[Desktop e Web] --> DRF[API com Django REST Framework]
-    Admin[Administração Django] --> Fluxos[Casos de uso compartilhados]
-    DRF --> Fluxos
-    Fluxos --> Dominio[Regras de domínio]
-    Fluxos --> ORM[Adaptador com Django ORM]
-    ORM --> Banco[(Banco)]
-```
-
-**Quando usar:** necessidade forte de cadastros, administração e recursos integrados. **Cuidado:** telas administrativas e API devem respeitar as mesmas regras; colocar regras apenas em uma view permite que outro caminho as ignore. O esquema mostra essa coordenação desejada, que precisa ser implementada.
-
-**Alternativa de framework:** FastAPI pode implementar a API da proposta hexagonal, com foco nos contratos HTTP. Nesse caso, persistência, migrações e administração precisam de escolhas próprias. Django e FastAPI são candidatos, não dependências já instaladas; não é necessário adotar ambos.
-
-### 2.4. Microsserviços e eventos: serviços independentes
-
-O Back-end é dividido em serviços implantados separadamente. Cada serviço possui responsabilidades e dados sob seu controle. Serviços podem trocar requisições e publicar eventos, que descrevem algo que já aconteceu.
-
-```mermaid
-flowchart LR
-    Clientes[Desktop, Web e integrações] --> Entrada[API de entrada]
-    Entrada --> A[Serviço A]
-    Entrada --> B[Serviço B]
-    A --> DBA[(Dados de A)]
-    B --> DBB[(Dados de B)]
-    A -->|publica evento| Fila[Broker de mensagens]
-    Fila -->|entrega evento| B
-```
-
-**Quando usar:** equipes independentes, requisitos comprovados de escala ou isolamento. **Cuidado:** eventos podem chegar com atraso ou repetidos, e operações entre serviços não compartilham automaticamente uma transação. É preciso tratar idempotência, falhas, compatibilidade de eventos, monitoramento e recuperação.
-
-Microsserviços não exigem eventos em toda comunicação, e um monólito também pode usar filas para tarefas demoradas. A recomendação inicial é adiar a distribuição até haver uma necessidade concreta.
-
-## 3. Arquitetura dos clientes
-
-### Desktop Python
-
-A apresentação cuida das telas. A aplicação do cliente coordena os fluxos do usuário. Um adaptador de API traduz essas ações em requisições ao servidor. O toolkit gráfico ainda será escolhido.
-
-```mermaid
-flowchart LR
-    Tela[Telas e estado da interface] --> Fluxo[Fluxos do cliente]
-    Fluxo --> Cliente[Adaptador da API]
-    Cliente -->|HTTPS| Backend[Back-end]
-```
-
-Validações locais ajudam a orientar o usuário, mas o servidor sempre verifica autorização e regras novamente. Funcionamento offline não está previsto como decisão aprovada: exigiria armazenamento protegido, sincronização, resolução de conflitos e tratamento da revogação de acesso.
-
-### Web responsiva
-
-A Web organiza telas e fluxos adequados a diferentes tamanhos de tela e consome os mesmos contratos do Back-end. A estrutura interna seguirá as convenções do framework escolhido. Responsividade também exige navegação por toque, formulários utilizáveis e acessibilidade, além de ajustar tamanhos.
-
-Uma PWA pode ser avaliada futuramente. Compatibilidade com celular não significa que instalação ou uso offline já estejam disponíveis.
-
-## 4. Como a estrutura de pastas corresponde à proposta
+## Estrutura de pastas
 
 ```text
 backend/
   src/prontuario_backend/
-    domain/                         Regras e conceitos do negócio
-    application/                    Casos de uso e portas
-    adapters/inbound/http/           Entrada pela API
-    adapters/outbound/persistence/   Implementação do acesso aos dados
-    adapters/outbound/integrations/  Comunicação com serviços externos
-    bootstrap/                      Composição e configuração
-  tests/{unit,integration,contract}/
+    models/                  Dados, regras e persistência
+    controllers/             Coordenação e verificação de acesso
+    views/                   Representação JSON e erros
+    routes/                  URLs e métodos HTTP
+    config/                  Inicialização, banco, segurança e Swagger
+  tests/
+    unit/                    Regras e funções isoladas
+    integration/             API e banco de teste
+    contract/                API em conformidade com OpenAPI
 desktop/
   src/prontuario_desktop/
-    presentation/                   Telas e estado
-    application/                    Coordenação dos fluxos locais
-    adapters/api/                   Cliente da API
-    bootstrap/                      Composição e configuração
+    presentation/            Telas e estado visual
+    application/             Fluxos locais do usuário
+    adapters/api/            Comunicação HTTP com o servidor
+    bootstrap/               Inicialização do cliente
   tests/{unit,integration}/
 web/
-  src/                              Organização a definir com o framework
+  src/                       Organização conforme o futuro framework
   tests/
 contracts/
-  openapi/                          Contrato público da API
-  examples/                         Exemplos com dados sintéticos
+  openapi/                   Descrição pública da API
+  examples/                  Exemplos sintéticos de entradas e respostas
 infra/
-  development/                      Serviços para desenvolvimento
-  deployment/                       Configuração de implantação
+  development/               Serviços para desenvolvimento
+  deployment/                Implantação futura
 docs/
-  adr/                              Decisões e respectivas aprovações
+  adr/                       Decisões e aprovações
 ```
 
-Os arquivos `.gitkeep` apenas preservam diretórios vazios no Git; não são implementações. Os módulos de negócio ainda serão definidos, sem transformar essas pastas técnicas em funcionalidades por si só.
+A simplificação para MVC é do Back-end. O Desktop mantém sua estrutura de cliente: tela → fluxo local → cliente HTTP → servidor. A Web terá apresentação responsiva e comunicação com a API conforme as convenções da tecnologia escolhida. Não é necessário copiar a estrutura do servidor nos clientes. Offline e PWA não estão implementados e precisam de decisão própria.
 
-| Documentação | Conteúdo |
+Os arquivos `.gitkeep` preservam pastas vazias no Git. Os READMEs das subpastas explicam onde colocar cada responsabilidade; ainda não existem funcionalidades de aplicação.
+
+| Documento | O que encontrar |
 | --- | --- |
-| [Back-end](backend/README.md) | Responsabilidades das camadas do servidor |
-| [Desktop](desktop/README.md) | Separação dos componentes do cliente Python |
-| [Web](web/README.md) | Restrições da interface responsiva |
-| [Contratos](contracts/README.md) | Fronteira pública entre clientes e servidor |
-| [Infraestrutura](infra/README.md) | Desenvolvimento e implantação futuros |
-| [Visão arquitetural](docs/architecture.md) | Dependências da proposta |
-| [Alternativas](docs/architecture-options.md) | Opções e critérios de escolha |
+| [Back-end](backend/README.md) | MVC, divisão de competências e exemplo prático |
+| [Desktop](desktop/README.md) | Telas, fluxos e consumo da API |
+| [Web](web/README.md) | Interface responsiva e competências |
+| [Contratos](contracts/README.md) | Compatibilidade entre servidor e clientes |
+| [Infraestrutura](infra/README.md) | Ambiente e implantação |
+| [Documentação](docs/README.md) | Divisão de responsabilidades da equipe |
+| [Diagrama arquitetural](docs/architecture.md) | Fluxo completo |
+| [Escolhas técnicas](docs/architecture-options.md) | O que foi escolhido e o que está pendente |
 
-Os READMEs de cada subpasta detalham suas competências e limites. Veja também a [divisão de responsabilidades entre frentes de desenvolvimento](docs/README.md) e o [exemplo prático do Back-end](backend/README.md#exemplo-prático-registrar-uma-anotação-de-demonstração).
+## Divisão de competências na turma
 
-## 5. Passos a seguir
-
-A sequência abaixo é um plano de desenvolvimento. Ela não indica tarefas já concluídas nem oferece comandos executáveis antes da escolha das ferramentas.
-
-| Etapa | O que fazer | Evidência para avançar |
+| Frente | Responsabilidade | Precisa combinar com |
 | --- | --- | --- |
-| 1. Definir o primeiro fluxo | Identificar usuários, permissões, dados necessários e um fluxo pequeno que atravesse cliente e servidor; usar dados sintéticos | Requisitos e critérios de aceitação revisados |
-| 2. Validar a arquitetura | Revisar e aprovar a ADR inicial; decidir monólito ou serviços, framework Python, banco, autenticação, toolkit Desktop e necessidade de offline | ADR com decisão, justificativa e aprovação explícita do responsável; Web pode continuar em aberto até sua etapa |
-| 3. Preparar o desenvolvimento | Fixar versões de Python e ferramentas, criar manifestos e lockfiles, configuração de exemplo sem segredos e comandos reproduzíveis | Instalação e verificações funcionando em ambiente limpo |
-| 4. Definir o contrato | Especificar a primeira operação, respostas, erros, autenticação, paginação quando aplicável e compatibilidade; escolher a fonte de verdade do OpenAPI | Contrato revisado e exemplos que clientes e servidor compreendem |
-| 5. Implementar domínio e aplicação | Escrever regras, caso de uso e portas para o primeiro fluxo, sem depender de HTTP ou banco | Testes unitários cobrindo sucesso, erro e limites das regras |
-| 6. Conectar o servidor | Implementar adaptadores HTTP e persistência, migrações, configuração e autorização no servidor | Testes de integração e contrato; requisição funcional do primeiro fluxo |
-| 7. Construir o Desktop | Escolher o toolkit, criar telas e o adaptador da API; tratar carregamento, erros e sessão | Fluxo real completo contra o servidor com dados de teste |
-| 8. Construir a Web | Escolher tecnologia, registrar a decisão e implementar o mesmo fluxo com layout responsivo | Fluxo validado em computador e celular, com testes de acessibilidade e autorização |
-| 9. Automatizar a revisão | Configurar CI com testes reais, revisão do Codex e proteções compatíveis com o acesso disponível; exigir ADR para alterações arquiteturais | Checks executados e comportamento de bloqueio verificado; não cadastrar checks inexistentes |
-| 10. Preparar a operação | Definir implantação, logs sem dados sensíveis, auditoria, backups, recuperação e distribuição/atualização do Desktop | Implantação de teste e restauração de backup demonstradas antes de produção |
+| Models | Dados, validações de negócio e persistência | Controllers e responsáveis pelos requisitos |
+| Controllers | Entradas, coordenação e autorização | Models e Views |
+| Views e rotas | Campos públicos, erros, caminhos e contrato | Controllers e equipes dos clientes |
+| Desktop | Telas Python e consumo da API | Equipe da API |
+| Web | Interface responsiva e acessibilidade | Equipe da API |
+| Testes e infraestrutura | Validar funcionamento e reproduzir ambiente | Todas as frentes |
 
-Mudanças em decisões aprovadas precisam de nova ADR ou revisão registrada. As quatro aprovações humanas e a revisão do Codex fazem parte da política solicitada; a documentação não comprova que as proteções estejam ativas no GitHub.
+Uma pessoa pode atuar em mais de uma frente. Antes de dividir uma funcionalidade, combinar entrada, saída, erros e critérios de aceitação. Não colocar uma regra somente na tela: o servidor precisa verificá-la novamente.
 
-## 6. Como o Swagger será aplicado no Back-end
+## Exemplo prático do Back-end
 
-### OpenAPI e Swagger: funções diferentes
+Para uma anotação fictícia: a rota recebe o texto; o Controller verifica usuário e permissão; o Model rejeita texto vazio e grava; a View devolve os campos públicos em JSON. O autor vem da identidade autenticada, não de um valor enviado pelo cliente.
 
-**OpenAPI** é a especificação do contrato HTTP: descreve endpoints, métodos, parâmetros, dados recebidos, respostas, erros e mecanismos de autenticação. **Swagger UI** é uma interface que apresenta esse documento e permite experimentar as operações. A interface usa a mesma API que Desktop, Web e outras integrações vão consumir.
+O [README do Back-end](backend/README.md#exemplo-prático-registrar-uma-anotação-de-demonstração) mostra o pseudocódigo separado por pasta e os testes necessários. É um exemplo didático, não uma funcionalidade clínica aprovada ou endpoint existente.
+
+## Passos de desenvolvimento
+
+1. **Definir um primeiro fluxo pequeno.** Registrar usuários, permissões, dados necessários e critérios de aceitação, usando dados sintéticos.
+2. **Escolher as ferramentas.** Registrar framework Python, banco/ORM, autenticação e toolkit Desktop na ADR. A escolha de MVC já está feita; Web pode ser decidida em sua etapa.
+3. **Preparar o ambiente.** Fixar versões, dependências e lockfiles; documentar configuração sem segredos e comandos verificados de instalação/testes.
+4. **Combinar o contrato.** Definir caminho, método, entrada, respostas, erros e segurança da primeira operação; configurar a fonte de verdade do OpenAPI.
+5. **Implementar o Model.** Criar dados, regras e persistência; testar as validações e transações relevantes.
+6. **Implementar Controller, View e rota.** Autenticar, autorizar, chamar Model e montar resposta; tratar falhas sem expor detalhes internos.
+7. **Testar o Back-end completo.** Cobrir sucesso, entrada inválida, acesso negado, ausência de gravação indevida e conformidade com o contrato.
+8. **Criar o fluxo no Desktop.** Implementar comunicação, estados de carregamento/erro e tela; verificar o comportamento contra o servidor de teste.
+9. **Escolher e desenvolver a Web.** Registrar a tecnologia; testar o mesmo fluxo em computador e celular, incluindo teclado, toque e acessibilidade.
+10. **Automatizar e preparar a entrega.** Configurar testes reais na CI e revisão do Codex; definir implantação, auditoria, logs sem dados sensíveis, backups e recuperação. Verificar na prática as proteções de merge disponíveis.
+
+Essas etapas são um plano, não tarefas concluídas. As quatro aprovações humanas e a revisão do Codex fazem parte da política solicitada; arquivos de documentação não comprovam que regras estejam ativas no GitHub.
+
+## Swagger no Back-end
+
+**OpenAPI** descreve o contrato da API. **Swagger UI** apresenta esse documento e permite experimentar requisições reais. As definições de rotas, entradas e respostas alimentam a documentação; o Controller continua verificando acesso e o Model continua validando regras.
 
 ```mermaid
 flowchart LR
-    Definicoes[Rotas, esquemas e metadados do Back-end] --> Gerador[Gerador OpenAPI]
-    Gerador --> Contrato[Documento OpenAPI]
+    Definicoes[Rotas e esquemas de entrada e resposta] --> Gerador[Gerador OpenAPI]
+    Gerador --> Contrato[Contrato OpenAPI]
     Contrato --> Swagger[Swagger UI]
     Contrato --> Testes[Testes de contrato]
-    Swagger -->|Requisição real autorizada| API[API HTTP]
-    Desktop[Desktop e Web] -->|Mesmo contrato| API
+    Swagger -->|Requisições reais| Rotas[Rotas da API]
 ```
 
-A proposta é gerar o contrato a partir das definições do servidor e validar o resultado. O esquema mostra o planejamento, ainda não implementado. A escolha final da fonte de verdade será registrada na ADR do framework; não manteremos duas especificações editadas manualmente que possam divergir.
+| Framework candidato | Como será configurado |
+| --- | --- |
+| FastAPI | Esquemas tipados e metadados das rotas geram OpenAPI; caminhos padrão `/docs` e `/openapi.json` serão confirmados na configuração |
+| Django + DRF | Avaliar gerador como `drf-spectacular`; serializers e metadados geram schema; rotas propostas `/api/schema/` e `/api/docs/` |
 
-### Configuração conforme o framework escolhido
+Nenhum desses caminhos existe atualmente. As configurações ficam em `config/`; rotas e esquemas HTTP descrevem entrada e resposta. Essa documentação não deve obrigar Models a conhecer Swagger.
 
-| Candidato | Como produzir o OpenAPI | Como apresentar o Swagger UI |
-| --- | --- | --- |
-| FastAPI | Usar modelos de entrada/saída, tipagem, metadados das rotas e descrições explícitas de respostas e segurança | Aproveitar o Swagger UI integrado; os caminhos padrão são `/docs` e `/openapi.json`, mas serão confirmados na configuração do projeto |
-| Django + DRF | Adotar um gerador compatível, como `drf-spectacular`, com serializers e anotações dos endpoints; a dependência será avaliada antes da instalação | Configurar rotas para o schema e para o Swagger UI; por exemplo, `/api/schema/` e `/api/docs/`, ainda propostos |
+### Como aplicar
 
-Nenhum desses endpoints existe atualmente. O Swagger pertence ao **adaptador HTTP**, não ao domínio: entidades e regras de negócio não devem importar tipos do framework apenas para gerar documentação.
+1. Escolher o framework e fixar suas dependências.
+2. Descrever entradas, campos públicos das respostas, status, erros e autenticação de cada operação.
+3. Gerar uma única especificação a partir da fonte aprovada. Em `contracts/openapi/`, guardar a exportação ou instruções de geração; não manter uma cópia manual divergente.
+4. Configurar a interface e o botão **Authorize** conforme a autenticação escolhida, sem embutir credenciais ou segredos.
+5. Validar o schema e testar requisições reais contra a API de teste, incluindo rejeições por falta de acesso.
+6. Incluir validação e comparação de contratos na CI para evitar quebrar clientes existentes.
+7. Decidir se Swagger UI e schema terão acesso restrito ou serão desativados em produção. Usar exemplos sintéticos e revisar a exposição de dados.
 
-### Conteúdo que cada operação deve documentar
+**Try it out executa a operação de verdade.** Usar ambiente de desenvolvimento para escritas. Swagger não cria autenticação, regras ou testes automaticamente. Se houver origens diferentes, configurar CORS somente para as origens necessárias; isso não substitui autorização.
 
-- Identificador estável da operação, descrição e agrupamento por responsabilidade.
-- Método HTTP, caminho e versão pública da API; por exemplo, uma convenção `/api/v1` a ser aprovada.
-- Campos obrigatórios e opcionais, tipos, formatos, limites e exemplos sintéticos.
-- Respostas de sucesso e erros efetivamente implementados, incluindo falhas de validação, autenticação e autorização quando aplicáveis.
-- Requisitos de autenticação e permissões, além de paginação, filtros e ordenação nas operações que precisarem desses recursos.
+## Executar e testar hoje
 
-A documentação não cria uma regra: descrever um campo como obrigatório ou informar um esquema de segurança não substitui a validação e a autorização executadas no servidor. Os exemplos devem corresponder ao comportamento real, sem nomes de pacientes, prontuários reais, tokens ou senhas.
-
-### Etapas de implementação e validação
-
-1. Após aprovar o framework, instalar e fixar as dependências do gerador e da interface, quando necessárias.
-2. Definir os esquemas HTTP do primeiro fluxo, mantendo-os separados dos modelos internos de persistência e do domínio.
-3. Configurar a geração do documento e a interface. Em `contracts/openapi/`, guardar o artefato exportado ou as instruções de geração, conforme a política aprovada; não duplicar manualmente as definições.
-4. Configurar o mecanismo de autenticação escolhido. A opção **Authorize** do Swagger UI deve usar esse mecanismo sem embutir credenciais nem segredos de cliente na página.
-5. Validar o documento gerado e executar testes contra a implementação: exemplos e esquemas corretos, respostas coerentes, autenticação e autorização funcionando. Uma página de documentação carregada não comprova que a API funciona.
-6. Incluir geração/validação do OpenAPI e testes de contrato na CI. Comparar mudanças de contrato para identificar incompatibilidades antes de atualizar clientes.
-7. Definir exposição por ambiente: disponibilizar a interface em desenvolvimento; em produção, decidir entre acesso restrito ou desativação conforme os requisitos. Swagger UI e documento OpenAPI precisam de política consistente de acesso.
-
-**Try it out executa operações reais.** Usar ambiente de desenvolvimento e dados sintéticos para experimentar endpoints de escrita; não tratar a interface como simulador. Se a Web ou a documentação estiver em outra origem, configurar CORS apenas para as origens necessárias; CORS não substitui autenticação.
-
-A entrega estará validada quando o schema puder ser gerado de forma reproduzível, a interface o carregar, uma requisição autorizada funcionar no ambiente de teste e os testes verificarem que o contrato corresponde à API.
-
-## 7. Executar e testar hoje
-
-Ainda não há comandos de instalação, inicialização ou testes da aplicação. Depois das decisões e da implementação, esta seção deverá registrar os comandos efetivamente verificados para Back-end, Desktop e Web, incluindo os serviços necessários e como validar sua prontidão.
+Ainda não há comandos de instalação, inicialização ou testes da aplicação. Depois da escolha das ferramentas, registrar aqui os comandos efetivamente validados, os serviços necessários e a verificação de funcionamento. A presença das pastas não significa que o sistema já execute.
