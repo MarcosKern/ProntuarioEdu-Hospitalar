@@ -1,0 +1,14 @@
+# Direct application, migration and backup dependencies.
+fastapi==0.162.0
+uvicorn==0.54.0
+SQLAlchemy==2.1.8
+PyMySQL==1.2.3
+PyJWT==2.15.1
+cryptography==50.0.2
+pydantic-settings==2.16.2
+redis==8.1.0
+prometheus_client==0.26.0
+alembic==1.20.1
+python-dotenv==1.2.4
+pydantic==2.14.3
+starlette==1.10.0

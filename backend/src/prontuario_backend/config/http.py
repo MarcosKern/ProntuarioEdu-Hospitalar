@@ -2,6 +2,8 @@ import hashlib
 import json
 import logging
 import time
+import traceback
+from pathlib import Path
 from uuid import uuid4
 
 from prometheus_client import CollectorRegistry, Counter, Histogram
@@ -70,7 +72,15 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                 request._body = bytes(body)
                 try:
                     response = await call_next(request)
-                except Exception:  # noqa: BLE001 - sanitize unhandled errors at the HTTP boundary
+                except Exception as error:  # noqa: BLE001 - sanitize unhandled errors at the HTTP boundary
+                    route = request.scope.get("route")
+                    # Do not log str(error), locals, source text, request bodies or URLs.
+                    frames = [{"file": Path(frame.filename).name,
+                               "function": frame.name, "line": frame.lineno}
+                              for frame in traceback.extract_tb(error.__traceback__)[-8:]]
+                    logger.error(json.dumps({"event": "unhandled_error", "request_id": request_id,
+                                             "route": getattr(route, "path", "unmatched"),
+                                             "error_type": type(error).__name__, "frames": frames}))
                     response = JSONResponse({"error": {"code": "internal_error", "request_id": request_id}}, 500)
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"

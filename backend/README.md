@@ -146,7 +146,7 @@ Linux/macOS, de `backend` (confirme que `python3 --version` é 3.12):
 python3 --version
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 python -m pip check
 python scripts/dev.py
 ```
@@ -155,7 +155,7 @@ PowerShell, de `backend`, sem precisar ativar o venv:
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pip check
 .\.venv\Scripts\python.exe scripts/dev.py
 ```
@@ -219,6 +219,7 @@ python -m ruff check src tests scripts
 python -m pip check
 python -m pytest -q
 python -m pip_audit -r requirements.txt
+python -m pip_audit -r requirements-dev.txt
 ```
 
 O comando acima roda testes sem banco e pula explicitamente os que exigem `MYSQL_TEST_URL` ausente. Para testar MySQL, configure essa variável no ambiente do terminal apontando para **outro banco descartável**, mais `MYSQL_TEST_ALLOW_RESET` igual ao nome exato desse banco, cujo nome comece com `prontuario_test`. Veja [testes](tests/README.md). Não use o banco de desenvolvimento ou produção: os testes apagam tabelas técnicas entre os casos.
@@ -249,3 +250,22 @@ O caminho é específico do host; adapte para um bundle confiável existente no 
 | Compose não saudável | Consultar logs da API e Redis; `/health` exige banco acessível e startup exige migrações concluídas |
 
 Não use este Compose com reload como implantação de produção. Retenção, backups, usuário de banco mínimo e configuração OIDC real estão detalhados em [SECURITY.md](SECURITY.md) e [MYSQL.md](MYSQL.md).
+
+## Dependências de execução e desenvolvimento
+
+`requirements.in` declara as dependências diretas da API, migrações e backup. `requirements.txt` fixa a resolução de runtime (27 pacotes nesta versão) e é o único lock instalado na imagem. Alembic permanece nele porque o startup de desenvolvimento executa migrações.
+
+`requirements-dev.in` acrescenta testes, lint, auditoria e manutenção dos locks; `requirements-dev.txt` fixa o conjunto completo de desenvolvimento. O script `dev.py --setup` e a CI instalam esse arquivo. Ferramentas de desenvolvimento e suas transitivas não são necessárias na imagem da API.
+
+Com Python 3.12 e venv dev ativo, após alterar intencionalmente os arquivos `.in`, regenere nesta ordem:
+
+```bash
+python -m piptools compile --strip-extras --no-emit-index-url --no-emit-trusted-host --output-file requirements.txt requirements.in
+python -m piptools compile --allow-unsafe --strip-extras --no-emit-index-url --no-emit-trusted-host --output-file requirements-dev.txt requirements-dev.in
+python -m pip install -r requirements-dev.txt
+python -m pip check
+```
+
+Não substituir os locks por `pip freeze`, que misturaria novamente os ambientes. Revisar alterações e auditar os dois locks. Os locks foram resolvidos e validados em Linux/Python 3.12; para outras plataformas, conferir também as dependências condicionais e os testes. Dependabot propõe atualizações semanais; nenhuma atualização deve ser mesclada sem a CI e as aprovações exigidas.
+
+Os timeouts de conexão, leitura, escrita e espera do pool MySQL são configuráveis em `.env` por MYSQL_CONNECT_TIMEOUT (5s), MYSQL_READ_TIMEOUT (10s), MYSQL_WRITE_TIMEOUT (10s) e MYSQL_POOL_TIMEOUT (5s). Os valores devem estar entre 0 e 120 segundos, sem incluir zero. Uma falha não repete automaticamente uma operação de escrita.

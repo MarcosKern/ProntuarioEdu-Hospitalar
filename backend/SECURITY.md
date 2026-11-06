@@ -36,7 +36,7 @@ Use os procedimentos de [backup MySQL remoto](MYSQL.md#backup-remoto-e-recupera�
 
 CI em `.github/workflows/backend.yml` executa Ruff, pytest com MySQL isolado, pip-audit e Trivy (imagem e segredos). Não usa pull_request_target nem publica imagens. Credencial fixa do serviço MySQL de CI é efêmera e exclusiva do runner; não é uma conta da aplicação. Os testes não carregam dados na aplicação.
 
-Local: `python -m pytest -q`, `python -m ruff check src tests scripts` e `python -m pip_audit -r requirements.txt`. O teste MySQL exige confirmação `MYSQL_TEST_ALLOW_RESET` igual ao nome exato do banco e `MYSQL_TEST_URL` apontando a banco descartável com nome iniciado por `prontuario_test`; sem isso é explicitamente pulado.
+Local: `python -m pytest -q`, `python -m ruff check src tests scripts` e `python -m pip_audit -r requirements.txt` e `python -m pip_audit -r requirements-dev.txt`. O teste MySQL exige confirmação `MYSQL_TEST_ALLOW_RESET` igual ao nome exato do banco e `MYSQL_TEST_URL` apontando a banco descartável com nome iniciado por `prontuario_test`; sem isso é explicitamente pulado.
 
 ## Produção: requisitos ainda externos
 
@@ -49,3 +49,11 @@ A imagem usa Python 3.12 com Alpine 3.23, fixada por digest no Dockerfile. A esc
 O usuário de execução continua sem privilégios (UID 1000, preservando o usuário anterior de desenvolvimento). O MySQL permanece externo, usando PyMySQL. A mudança de distribuição não muda o contrato HTTP nem as regras MVC. Dependências continuam fixadas em requirements.txt; a CI verifica a imagem completa com a mesma política de vulnerabilidades e segredos.
 
 Manter a base atualizada: consultar a imagem oficial Python 3.12/Alpine, verificar o novo digest, reconstruir, executar testes incluindo MySQL e repetir o scan completo. Um resultado limpo em HIGH/CRITICAL é uma observação daquela base de vulnerabilidades e imagem, não garantia permanente ou ausência de achados menores. Não usar ignore-unfixed, supressões globais ou remoção do scan para liberar a imagem.
+
+## Auditoria contínua e diagnóstico
+
+O workflow Backend validation pode ser disparado manualmente e agenda execução semanal em UTC, além de PR/push-main. Instala o lock dev para testes; a imagem instala somente runtime. Dependabot cobre pip, Docker e Actions. CodeQL tem workflow Python dedicado com ações fixadas por SHA e permissão restrita de publicação de análises. Ele só será validado após execução no GitHub; se houver default setup habilitado, o administrador deve escolher entre o setup padrão e o avançado para evitar duplicação. A configuração nativa de code_quality permanece sob controle do administrador.
+
+As respostas esperadas são descritas por ErrorResponse no OpenAPI, conforme cada rota. Erros inesperados registram request ID, classe, rota parametrizada e localização de código sem mensagem de exceção, variáveis locais, corpo, token ou URL de conexão. Os logs não devem receber posteriormente `str(exception)` ou traceback com locais, que podem reintroduzir exposição de dados.
+
+Leitura/escrita SQL e espera por pool agora têm limites explícitos. Validar esses limites com o operador do banco externo; timeouts não substituem índices, dimensionamento, monitoramento ou uma estratégia de idempotência.
