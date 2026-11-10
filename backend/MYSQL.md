@@ -1,6 +1,6 @@
 # MySQL externo: configuração atual
 
-Este guia substitui as instruções anteriores de PostgreSQL/SQLite. O padrão de todo o Back-end é **MySQL 8.4 + PyMySQL**, inclusive testes de integração.
+Este é o guia vigente para o banco do projeto. O padrão de todo o Back-end é **MySQL 8.4 + PyMySQL**, inclusive testes de integração.
 
 ## Preparar a conexão
 
@@ -38,7 +38,7 @@ Compose inicia somente API e Redis. DATABASE_URL aponta para seu servidor extern
 
 ## Migrações e auditoria
 
-A nova revisão cria triggers de auditoria MySQL e comparação de subject sensível a maiúsculas. A criação de triggers com binary logging pode exigir execução pelo DBA ou configuração aprovada de log_bin_trust_function_creators. A CI usa root apenas no serviço descartável, não na aplicação. Não conceda ao usuário da API TRIGGER, ALTER, DROP ou TRUNCATE: triggers não protegem contra administradores ou DDL. Datas usam UTC. Uma URL MySQL não converte um banco PostgreSQL/SQLite existente; preservar backups e planejar conversão separadamente. Volumes antigos não são apagados por esta mudança.
+A nova revisão cria triggers de auditoria MySQL e comparação de subject sensível a maiúsculas. A criação de triggers com binary logging pode exigir execução pelo DBA ou configuração aprovada de log_bin_trust_function_creators. A CI usa root apenas no serviço descartável, não na aplicação. Não conceda ao usuário da API TRIGGER, ALTER, DROP ou TRUNCATE: triggers não protegem contra administradores ou DDL. Datas usam UTC. Uma URL MySQL não converte automaticamente um banco de outro mecanismo; preservar backups e planejar conversão separadamente. Volumes antigos não são apagados por esta mudança.
 
 ## Testes
 

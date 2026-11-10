@@ -23,15 +23,8 @@ def upgrade():
         sa.Column("action", sa.String(32), nullable=False),
         sa.Column("outcome", sa.String(16), nullable=False),
         sa.Column("request_id", sa.String(36), nullable=False))
-    if op.get_bind().dialect.name == "postgresql":
-        op.execute("""CREATE FUNCTION reject_audit_change() RETURNS trigger AS $$
-            BEGIN RAISE EXCEPTION 'Audit events are append only'; END;
-            $$ LANGUAGE plpgsql""")
-        op.execute("CREATE TRIGGER audit_append_only BEFORE UPDATE OR DELETE ON audit_events FOR EACH ROW EXECUTE FUNCTION reject_audit_change()")
 
 
 def downgrade():
     op.drop_table("audit_events")
     op.drop_table("record_permissions")
-    if op.get_bind().dialect.name == "postgresql":
-        op.execute("DROP FUNCTION reject_audit_change()")
