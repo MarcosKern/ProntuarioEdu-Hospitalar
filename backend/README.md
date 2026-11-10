@@ -94,6 +94,89 @@ Uma pessoa pode atuar em mais de uma frente. A separação orienta onde escrever
 
 Rotas e esquemas de entrada/saída alimentam o OpenAPI, apresentado pelo Swagger UI. Views não devem serializar campos privados por padrão. Veja o [README principal](../README.md#swagger-no-back-end).
 
+### Pré-configuração implementada
+
+O arquivo [`config/swagger.py`](src/prontuario_backend/config/swagger.py) centraliza título, versão, descrição, grupos de rotas e comportamento do Swagger. As rotas existentes já têm resumo, descrição, identificador da operação e schemas de respostas, inclusive erros. Não é necessário instalar um pacote Swagger separado: o FastAPI já gera o contrato.
+
+| Endereço | Finalidade |
+| --- | --- |
+| `/docs` | Interface Swagger, disponível em desenvolvimento e testes |
+| `/openapi.json` | Contrato para clientes, Postman e validação automatizada |
+| `/docs/oauth2-redirect` | Retorno técnico do login OAuth2 iniciado pelo Swagger |
+
+O Swagger usa a mesma origem do navegador para chamar a API. Assim, no Codespace, as requisições continuam no endereço HTTPS encaminhado pelo GitHub. Autorizações não são persistidas pelo Swagger no armazenamento do navegador. Em produção, a interface, o contrato e o retorno OAuth2 ficam desabilitados.
+
+### Usar o Swagger em desenvolvimento
+
+1. Configure o ambiente com `APP_ENV=development` e inicie o Back-end pelo [roteiro do Codespace](#rodar-o-contêiner-de-desenvolvimento-e-acessar-a-api) ou pelos modos locais deste README. A execução atual da API exige MySQL de desenvolvimento autorizado; a configuração do Swagger não importa o banco ou a arquitetura enviados.
+2. Abra a porta encaminhada do Codespace e acrescente `/docs`. No modo local, use `http://127.0.0.1:8000/docs`. Mantenha o host de acesso em `ALLOWED_HOSTS`.
+3. Expanda uma operação para consultar descrição, parâmetros, schema e códigos de resposta. Clique em **Try it out** e depois em **Execute** para realizar uma chamada real. A rota `/health` consulta o banco; ela não exige token.
+4. Para operações protegidas, configure o provedor real conforme a próxima seção e use **Authorize**. O login na porta privada do GitHub permite acessar o Codespace, mas não autentica o usuário da API.
+
+Não há novo endpoint clínico, conta padrão ou geração de tokens de demonstração. Sem autenticação, `/api/v1/me` continua respondendo HTTP 401.
+
+### Preparar o botão Authorize com OAuth2 e PKCE
+
+Os campos `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_JWKS_URL`, `OIDC_AUTHORIZATION_URL` e `OIDC_TOKEN_URL` devem receber os valores reais fornecidos pelo responsável pelo provedor. Eles já são necessários para o fluxo de autenticação existente. Enquanto o provedor não estiver configurado, o Swagger pode ser visualizado, mas o botão Authorize não realiza login funcional.
+
+Para preparar o cliente do Swagger no provedor:
+
+1. Registre um **cliente público**, com Authorization Code e **PKCE S256**, destinado ao Swagger de desenvolvimento. Esse fluxo no navegador não usa client secret.
+2. Cadastre como redirect URI o endereço exato pelo qual você abre o Swagger, seguido de `/docs/oauth2-redirect`. Para acesso local pela porta padrão, é `http://127.0.0.1:8000/docs/oauth2-redirect`. No Codespace, copie a origem HTTPS da aba **Ports** e acrescente esse caminho; não use o endereço interno do contêiner. O retorno local depende de o provedor permitir HTTP de loopback para desenvolvimento.
+3. Se o provedor exigir uma lista de origens permitidas para a troca do código, inclua a origem do Swagger na configuração do provedor. A troca de tokens ocorre pelo navegador. Não é preciso liberar CORS da API para o Swagger que usa sua própria origem.
+4. Copie o **client ID público** para `SWAGGER_CLIENT_ID` no `.env` do Back-end. O campo está previsto em [`.env.example`](.env.example) e pode ficar vazio enquanto o login não for configurado. O client ID não é necessariamente igual ao `OIDC_AUDIENCE`, que identifica a audiência aceita pela API.
+5. Reinicie a execução Python ou recrie o serviço Compose para carregar as variáveis. No Compose, use `docker compose up -d --force-recreate --wait`, com os dois arquivos `-f` se estiver usando o override TLS.
+6. Reabra `/docs`, clique em **Authorize** e conclua o login no provedor real. Depois, execute `GET /api/v1/me` para verificar a identidade autenticada. O provedor precisa emitir um access token compatível com a validação existente: JWT RS256, issuer e audience configurados, além de `exp` e `sub`.
+
+Não coloque client secret em `.env` para o Swagger, no JSON da documentação ou no navegador. A pré-configuração não registra o cliente automaticamente no provedor. Se o hostname do Codespace mudar, atualize a redirect URI no provedor e `ALLOWED_HOSTS` no Back-end.
+
+### Exemplo: configurar a documentação de um endpoint
+
+O exemplo abaixo é um recorte da rota **já implementada** em [`routes/api.py`](src/prontuario_backend/routes/api.py). Ele mostra como documentar `GET /api/v1/me`; não precisa ser copiado para criar uma segunda rota.
+
+```python
+class IdentityResponse(BaseModel):
+    subject: str
+
+
+@router.get(
+    "/api/v1/me",
+    response_model=IdentityResponse,
+    tags=["Autenticação"],
+    summary="Consultar a identidade autenticada",
+    operation_id="get_current_identity",
+    description="Valida o token do provedor OIDC e retorna seu subject. Exige autenticação Bearer.",
+    responses={
+        status: ERROR_RESPONSES[status]
+        for status in (401, 405, 413, 429, 500, 503)
+    },
+)
+def identity(user=Depends(current_user)):
+    return IdentityResponse(subject=user["sub"])
+```
+
+Nesse arquivo, `BaseModel` vem de Pydantic, `Depends` vem de FastAPI, `router` é uma instância de `APIRouter`, `current_user` é a dependência de autenticação existente e `ERROR_RESPONSES` vem de `views/errors.py`.
+
+| Configuração | Efeito no Swagger e na API |
+| --- | --- |
+| Caminho e método do decorator | Registram a operação que aparecerá na documentação |
+| `response_model` | Define o contrato da resposta de sucesso e filtra os campos retornados |
+| `tags` | Agrupa a operação; os grupos atuais são descritos em `config/swagger.py` |
+| `summary` e `description` | Explicam o objetivo e os requisitos da chamada |
+| `operation_id` | Identifica a operação no OpenAPI; deve ser único e estável para os clientes |
+| `responses` | Documenta os erros com o schema compartilhado; não implementa seu tratamento |
+| `Depends(current_user)` | Exige identidade válida e faz o esquema OAuth2 aparecer nessa operação |
+
+Ao alterar um endpoint real, mantenha a implementação e esses metadados coerentes. Para entrada de dados futura, declare um Model Pydantic adequado ao contrato aprovado: o FastAPI incluirá seus campos no OpenAPI. Documentar um erro ou uma regra não substitui implementá-los e testá-los.
+
+Para conferir esta pré-configuração sem banco, de `backend` e sem `MYSQL_TEST_URL` no ambiente:
+
+```bash
+.venv/bin/python -m pytest -q tests/contract/test_swagger.py
+```
+
+Os testes verificam acesso pelo hostname do Codespace, retorno OAuth2 na mesma origem, PKCE, configuração pública do cliente e manutenção da exigência de autenticação. O teste de produção em `tests/integration/test_security.py` também confere que a documentação e o retorno OAuth2 respondem 404.
+
 Em `tests/unit/`, validar texto vazio, coordenação e respostas. Em `tests/integration/`, verificar acesso negado sem gravação e persistência/transação no banco de teste. Em `tests/contract/`, verificar respostas e OpenAPI. A seção de ambiente descreve os testes iniciais implementados; os testes do exemplo clínico continuam futuros.
 
 As instruções abaixo descrevem o ambiente inicial implementado com FastAPI, SQLAlchemy e MySQL. O provedor real de autenticação ainda precisa ser configurado.

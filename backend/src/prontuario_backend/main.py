@@ -10,6 +10,7 @@ from starlette.responses import JSONResponse, Response
 
 from prontuario_backend.config.http import SecurityMiddleware
 from prontuario_backend.config.settings import get_settings
+from prontuario_backend.config.swagger import swagger_config
 from prontuario_backend.routes.api import router
 
 
@@ -19,9 +20,7 @@ def create_app():
     logging.getLogger("prontuario.requests").setLevel(logging.INFO)
     if not logging.getLogger("prontuario.requests").handlers:
         logging.getLogger("prontuario.requests").addHandler(logging.StreamHandler())
-    app = FastAPI(title="ProntuarioEdu", version="0.2.0", docs_url=None if production else "/docs",
-                  redoc_url=None, openapi_url=None if production else "/openapi.json",
-                  swagger_ui_init_oauth={"usePkceWithAuthorizationCodeGrant": True})
+    app = FastAPI(**swagger_config(settings))
     app.add_middleware(SecurityMiddleware, settings=settings)
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
                        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],

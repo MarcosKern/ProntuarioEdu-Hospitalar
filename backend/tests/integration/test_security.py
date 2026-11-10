@@ -75,7 +75,7 @@ def test_production_hides_docs_and_metrics(monkeypatch):
     monkeypatch.setenv("OIDC_AUDIENCE", "test-only")
     get_settings.cache_clear()
     with TestClient(create_app(), base_url="http://localhost") as client:
-        for path in ("/docs", "/openapi.json", "/metrics"):
+        for path in ("/docs", "/docs/oauth2-redirect", "/openapi.json", "/metrics"):
             response = client.get(path)
             assert response.status_code == 404
             assert response.headers["strict-transport-security"] == "max-age=31536000"
