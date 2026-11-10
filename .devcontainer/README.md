@@ -1,6 +1,6 @@
 # Ambiente padronizado no GitHub Codespaces
 
-O arquivo [devcontainer.json](devcontainer.json) define o ambiente do editor, sem alterar a imagem de produção da API. A imagem de desenvolvimento usa Python 3.12 e usuário `vscode`; a imagem do Back-end continua separada em `backend/Dockerfile`.
+O arquivo [devcontainer.json](devcontainer.json) define o ambiente do editor, sem alterar a imagem de produção da API. O [Dockerfile de desenvolvimento](Dockerfile) usa a imagem oficial Python 3.12 e remove a fonte APT desnecessária do Yarn antes da instalação das features. O editor usa o usuário `vscode`; a imagem do Back-end continua separada em `backend/Dockerfile`.
 
 ## Passo a passo para executar a configuração no GitHub
 
@@ -10,7 +10,7 @@ Este procedimento prepara apenas o ambiente de desenvolvimento. Não é necessá
 
 ### 1. Confirmar que a configuração está na branch do GitHub
 
-Abra o repositório no GitHub e use o seletor de branches, acima da lista de arquivos, para escolher a branch de trabalho. Confirme que ela contém `.devcontainer/devcontainer.json` e `.devcontainer/setup.py`.
+Abra o repositório no GitHub e use o seletor de branches, acima da lista de arquivos, para escolher a branch de trabalho. Confirme que ela contém `.devcontainer/devcontainer.json`, `.devcontainer/Dockerfile` e `.devcontainer/setup.py`.
 
 Se os arquivos estiverem apenas no computador ou em outro ambiente, primeiro é necessário enviar a branch ao GitHub. Por exemplo, para a branch criada para esta configuração, execute no terminal do repositório:
 
@@ -28,7 +28,7 @@ Se a tela oferecer a escolha da configuração de Dev Container, selecione a que
 
 ### 3. Aguardar o GitHub executar o arquivo de configuração
 
-Durante a criação, o GitHub lê o `devcontainer.json`, prepara a imagem com Python 3.12, instala a feature Docker e solicita as extensões declaradas. Em seguida, executa automaticamente o `postCreateCommand`:
+Durante a criação, o GitHub lê o `devcontainer.json`, constrói a imagem Python 3.12 pelo Dockerfile, instala a feature Docker e solicita as extensões declaradas. Em seguida, executa automaticamente o `postCreateCommand`:
 
 ```bash
 python3 .devcontainer/setup.py
@@ -94,11 +94,26 @@ Isso reutiliza o venv existente, preserva `.env` e executa novamente a instalaç
 - **Extensão ausente:** confira a aba Extensions e o log. Alguns recursos podem exigir login, disponibilidade no editor ou permissão da organização.
 - **Docker indisponível:** confira se a feature foi instalada e se a política da organização permite seu uso. Consulte os logs da reconstrução antes de tentar novamente.
 
+### Recuperar o Codespace após erro de chave GPG do Yarn
+
+O erro `NO_PUBKEY 62D54FD4003F6525`, seguido de `The repository 'https://dl.yarnpkg.com/debian stable InRelease' is not signed`, pode interromper o `apt-get update` da feature Docker. A falha acontece na construção da imagem, antes de executar `setup.py`, e o GitHub abre um contêiner de recuperação.
+
+O Dockerfile deste projeto remove apenas as fontes `/etc/apt/sources.list.d/yarn.list` e `yarn.sources` herdadas da imagem. O ambiente Python/Docker atual não depende desse repositório. A correção ocorre antes da instalação das features e mantém a verificação de assinaturas dos demais repositórios. Não é necessário importar uma chave manualmente ou desabilitar as verificações do APT.
+
+Para recuperar um Codespace que apresenta essa mensagem:
+
+1. Abra o terminal do contêiner de recuperação e entre na raiz do repositório. Preserve seu trabalho pendente antes de atualizar o checkout.
+2. Depois que a correção estiver publicada na branch utilizada pelo Codespace, baixe-a com `git pull --ff-only`, desde que essa branch já acompanhe a correspondente no GitHub. Confira que o `devcontainer.json` possui `build.dockerfile` apontando para `Dockerfile` e que `.devcontainer/Dockerfile` existe. Se a correção estiver em outra branch, disponibilize-a na branch usada antes de reconstruir.
+3. Abra a paleta e execute **Codespaces: Rebuild Container** ou **Dev Containers: Rebuild Container**. Apenas executar `setup.py` no contêiner de recuperação não corrige a imagem ou instala a feature Docker.
+4. Acompanhe o log até terminar a instalação das features e das dependências Python. Depois, repita as verificações do passo 4 deste guia, incluindo `docker info` e `docker compose version`.
+
+Esse procedimento reconstrói o ambiente de ferramentas. Não inicia a API nem aplica migrações no banco.
+
 ## Instalação automática
 
 | Item | Configuração |
 | --- | --- |
-| Python 3.12 e venv | Imagem oficial Dev Containers para Python |
+| Python 3.12 e venv | Imagem oficial Dev Containers para Python, preparada por `.devcontainer/Dockerfile` |
 | Dependências da equipe | `backend/requirements-dev.txt`, que inclui o runtime fixado |
 | Docker Engine, Compose v2 e Buildx | Feature oficial Docker in Docker |
 | Python e análise de tipos | `ms-python.python` e `ms-python.vscode-pylance` |
