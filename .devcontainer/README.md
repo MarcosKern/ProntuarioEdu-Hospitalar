@@ -2,6 +2,98 @@
 
 O arquivo [devcontainer.json](devcontainer.json) define o ambiente do editor, sem alterar a imagem de produção da API. A imagem de desenvolvimento usa Python 3.12 e usuário `vscode`; a imagem do Back-end continua separada em `backend/Dockerfile`.
 
+## Passo a passo para executar a configuração no GitHub
+
+O `devcontainer.json` é um arquivo de configuração lido pelo GitHub Codespaces. Você não precisa executá-lo com Python, instalar as extensões uma por uma ou montar um contêiner manualmente. O GitHub lê esse arquivo quando cria ou reconstrói o Codespace e executa as etapas descritas abaixo.
+
+Este procedimento prepara apenas o ambiente de desenvolvimento. Não é necessário configurar uma conexão MySQL para concluí-lo. O banco e a arquitetura enviados pelo responsável continuam adiados; nenhum anexo é importado por essa configuração.
+
+### 1. Confirmar que a configuração está na branch do GitHub
+
+Abra o repositório no GitHub e use o seletor de branches, acima da lista de arquivos, para escolher a branch de trabalho. Confirme que ela contém `.devcontainer/devcontainer.json` e `.devcontainer/setup.py`.
+
+Se os arquivos estiverem apenas no computador ou em outro ambiente, primeiro é necessário enviar a branch ao GitHub. Por exemplo, para a branch criada para esta configuração, execute no terminal do repositório:
+
+```bash
+git push -u origin chore/codespaces-mysql-dev-environment
+```
+
+Esse comando é uma etapa manual de publicação da branch; não faz parte da execução automática do Codespace. Se a configuração estiver em outra branch, use o nome correspondente.
+
+### 2. Criar o Codespace na branch escolhida
+
+Com a branch correta selecionada, clique no botão **Code**, abra a aba **Codespaces** e escolha **Create codespace on ...**. Confira se o nome exibido é o da branch que contém a configuração.
+
+Se a tela oferecer a escolha da configuração de Dev Container, selecione a que corresponde a `.devcontainer/devcontainer.json`, identificada como **ProntuarioEdu — desenvolvimento Python 3.12**. Aguarde o GitHub abrir o editor no navegador.
+
+### 3. Aguardar o GitHub executar o arquivo de configuração
+
+Durante a criação, o GitHub lê o `devcontainer.json`, prepara a imagem com Python 3.12, instala a feature Docker e solicita as extensões declaradas. Em seguida, executa automaticamente o `postCreateCommand`:
+
+```bash
+python3 .devcontainer/setup.py
+```
+
+O script cria `backend/.venv`, instala `backend/requirements-dev.txt` e verifica a compatibilidade das dependências com `pip check`. Também cria `backend/.env` a partir de `.env.example` somente se o arquivo ainda não existir, preservando a configuração existente.
+
+Não execute esse comando em paralelo enquanto a preparação automática estiver em andamento. Aguarde o término do processo; quando houver a opção **View creation log** / **Exibir log de criação**, acompanhe por ela. Ao concluir o script, o log deve conter:
+
+```text
+Dependências prontas. Configure MySQL/OIDC e use a tarefa Codespaces: iniciar API.
+Nenhum SQL foi importado e nenhuma migração foi executada.
+```
+
+A mensagem sobre iniciar a API indica uma etapa posterior. A API não é iniciada por esse script.
+
+### 4. Conferir se o ambiente ficou pronto
+
+No editor do Codespace, abra **Terminal → New Terminal**. Os comandos abaixo devem ser executados na raiz do repositório, onde aparecem as pastas `backend` e `.devcontainer`:
+
+```bash
+pwd
+backend/.venv/bin/python --version
+backend/.venv/bin/python -m pip check
+docker info
+docker compose version
+```
+
+O Python deve ser `3.12.x`; o `pip check` deve informar `No broken requirements found.`. O `docker info` deve mostrar informações do servidor Docker, e o último comando deve apresentar a versão do Compose. Se uma etapa falhar, consulte o log antes de considerar a instalação concluída.
+
+Abra também **Extensions** na barra lateral e confira as extensões listadas na tabela da seção seguinte. Se o Python do editor não estiver apontando para o ambiente do projeto, abra a paleta com `Ctrl+Shift+P` (ou `Cmd+Shift+P` no macOS), execute **Python: Select Interpreter** e escolha `backend/.venv/bin/python`.
+
+Para conferir as ferramentas sem acessar o banco, execute da raiz:
+
+```bash
+backend/.venv/bin/python -m ruff check backend/src backend/tests backend/scripts
+```
+
+Com essas verificações concluídas, o ambiente está preparado para trabalhar no código. Não é preciso executar a API nem configurar banco de dados nesta etapa.
+
+### 5. Aplicar a configuração em um Codespace já existente
+
+Abra o Codespace e confirme que o checkout contém a versão desejada de `.devcontainer/devcontainer.json` e dos scripts. Reconstruir o contêiner usa os arquivos presentes nesse checkout; não baixa automaticamente alterações de outra branch. Se houver trabalho pendente, preserve-o antes de atualizar ou trocar a branch pelo controle de versão.
+
+Abra a paleta com `Ctrl+Shift+P` (ou `Cmd+Shift+P`) e execute **Codespaces: Rebuild Container**. Dependendo do editor utilizado, o comando pode aparecer como **Dev Containers: Rebuild Container**. Aguarde a reconstrução, a execução do script de preparação e a reabertura do editor. Depois, repita as verificações do passo 4.
+
+Use a reconstrução quando mudar imagem, features ou configuração do contêiner. Apenas fechar e reabrir o editor não garante que essas mudanças sejam aplicadas.
+
+### 6. Reinstalar somente as dependências, quando necessário
+
+Se a configuração do contêiner não mudou e você precisa apenas reaplicar as dependências Python, execute da raiz:
+
+```bash
+python3 .devcontainer/setup.py
+```
+
+Isso reutiliza o venv existente, preserva `.env` e executa novamente a instalação e o `pip check`. Esse comando sozinho não instala as extensões do VS Code nem o Docker: essas etapas dependem do `devcontainer.json` durante a criação ou reconstrução do Codespace.
+
+### Se a preparação falhar
+
+- **A configuração não foi encontrada:** confira a branch e a presença de `.devcontainer/devcontainer.json` no GitHub. Em Codespace existente, confirme também o checkout e reconstrua o contêiner.
+- **Erro de instalação de pacotes:** consulte o log da criação ou a saída do `setup.py`. Depois de resolver a causa, execute novamente o script pelo passo 6.
+- **Extensão ausente:** confira a aba Extensions e o log. Alguns recursos podem exigir login, disponibilidade no editor ou permissão da organização.
+- **Docker indisponível:** confira se a feature foi instalada e se a política da organização permite seu uso. Consulte os logs da reconstrução antes de tentar novamente.
+
 ## Instalação automática
 
 | Item | Configuração |
@@ -17,17 +109,9 @@ O arquivo [devcontainer.json](devcontainer.json) define o ambiente do editor, se
 
 A configuração declara as extensões; o GitHub/VS Code baixa-as no Codespace. Recursos de terceiros podem exigir login, licença ou abertura no VS Code Desktop conforme sua disponibilidade. Nenhuma conta, senha, conexão MySQL ou coleção Postman com credenciais é embutida no repositório.
 
-## Criar ou atualizar um Codespace
-
-1. Disponibilizar estes arquivos na branch que deseja usar. No GitHub: **Code → Codespaces → Create codespace** nessa branch.
-2. Aguardar o build da imagem, instalação da feature Docker e conclusão do `postCreateCommand`.
-3. O script [setup.py](setup.py) prepara `backend/.venv`, instala o lock dev e cria `backend/.env` a partir do exemplo **somente se não existir**. Não importa SQL, não executa Alembic e não inicia a API.
-4. Em Codespace existente, usar **Dev Containers: Rebuild Container** após mudar `devcontainer.json`. Para apenas reaplicar dependências, executar da raiz `python3 .devcontainer/setup.py`.
-5. Conferir no terminal `python --version`, `python -m pip check`, `docker info` e `docker compose version`.
-
 A feature Docker necessita permissões do ambiente de contêineres e pode ser bloqueada por política da organização. Não iniciar outro daemon manualmente para contornar uma falha. O primeiro build pode demorar; os locks Python são fixados, enquanto tags de imagem/feature recebem manutenção do provedor.
 
-## Configurar MySQL externo e segredos
+## Etapa futura: configurar MySQL externo e segredos
 
 Use **Settings → Secrets and variables → Codespaces** do GitHub, ou seus segredos pessoais de Codespaces, habilitando acesso ao repositório. Configure `DATABASE_URL` e, quando necessário, os valores `OIDC_*`. Reinicie/recrie o Codespace para receber alterações de segredos. Não colocar valores em `devcontainer.json`, tasks, conexões versionadas ou mensagens de commit.
 
@@ -37,7 +121,7 @@ O banco é **MySQL 8.4 externo**: este Dev Container não instala MySQL Server e
 
 O cliente MySQL do VS Code deve usar o mesmo servidor/banco e verificar TLS, com usuário de privilégios mínimos. Não versionar configurações de conexão contendo credenciais. A extensão não aplica as regras de autorização da API: acesso SQL deve ser limitado a quem tem essa competência.
 
-## Iniciar a API e usar o Postman
+## Etapa futura: iniciar a API e usar o Postman
 
 Pela paleta **Tasks: Run Task**, escolha **Codespaces: iniciar API**. Alternativamente, da raiz:
 
