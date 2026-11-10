@@ -272,4 +272,147 @@ Os timeouts de conexão, leitura, escrita e espera do pool MySQL são configurá
 
 ## GitHub Codespaces
 
-Para ambiente de editor, Docker e extensões padronizados, siga o [guia Codespaces](../.devcontainer/README.md).
+### Rodar o contêiner de desenvolvimento e acessar a API
+
+Este passo a passo usa o Docker Compose do Back-end **dentro do Codespace**. Primeiro, crie ou reconstrua o Codespace conforme o [guia de configuração](../.devcontainer/README.md#passo-a-passo-para-executar-a-configuração-no-github). O contêiner do Codespace fornece o editor e as ferramentas; o Compose cria os serviços da API e do Redis nesse ambiente.
+
+O banco e a arquitetura enviados pelo responsável continuam adiados. Os comandos abaixo descrevem a execução da implementação técnica existente; não importam os anexos. **Ao subir a API, o Compose aplica as migrações Alembic existentes no MySQL configurado. Execute essa etapa somente quando houver um banco de desenvolvimento autorizado.**
+
+#### 1. Abrir o terminal e conferir o Docker
+
+No editor do Codespace, clique em **Terminal → New Terminal**. A partir da raiz do repositório, entre na pasta do Back-end:
+
+```bash
+cd backend
+docker info
+docker compose version
+```
+
+O primeiro comando Docker deve mostrar informações do servidor, e o segundo deve mostrar Compose 2.24 ou posterior. Se o Docker estiver indisponível, confira o log de criação e reconstrua o Codespace pelo guia; não prossiga supondo que a instalação terminou. Todos os comandos seguintes partem de `backend`.
+
+Se você quer apenas construir a imagem por enquanto, sem conectar ao banco, pode executar:
+
+```bash
+docker build -t prontuario-backend-dev .
+```
+
+Esse comando instala as dependências e prepara a imagem, mas não inicia a API, o Redis ou migrações. Para executar os serviços, continue somente depois de configurar a conexão descrita a seguir.
+
+#### 2. Preparar a configuração privada do Back-end
+
+O Codespace normalmente já criou `backend/.env`. Caso o arquivo ainda não exista:
+
+```bash
+[ -f .env ] || cp .env.example .env
+```
+
+Abra esse arquivo no editor e mantenha `APP_ENV=development` para disponibilizar o Swagger. Configure `DATABASE_URL` com o MySQL externo de desenvolvimento conforme o [guia MySQL](MYSQL.md#preparar-a-conexão). A conexão precisa funcionar de dentro do contêiner; `localhost` não representa o servidor externo. Não é necessário instalar MySQL Server no Codespace.
+
+Você pode fornecer `DATABASE_URL` por segredo do GitHub Codespaces em vez de gravá-la no `.env`. Nesse caso, a variável recebida pelo terminal tem precedência na interpolação do Compose. O serviço usa esse valor explicitamente. Para os demais campos deste roteiro, edite o `.env`: o Compose carrega esse arquivo no serviço, mas não encaminha automaticamente todas as variáveis do terminal.
+
+Não versione `.env`, certificados privados ou credenciais. OIDC pode ser configurado depois; sem provedor e token válidos, as rotas protegidas continuam bloqueadas.
+
+#### 3. Autorizar o endereço encaminhado do Codespace
+
+O navegador acessará um hostname do GitHub, diferente de `localhost`. Para descobrir o hostname exato da porta 8000, execute no terminal do Codespace:
+
+```bash
+.venv/bin/python - <<'PY'
+import json
+import os
+
+name = os.environ["CODESPACE_NAME"]
+domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
+host = f"{name}-8000.{domain}"
+print("ALLOWED_HOSTS=" + json.dumps(["localhost", "127.0.0.1", host]))
+PY
+```
+
+Copie a linha gerada e substitua a linha `ALLOWED_HOSTS` no `.env`, mantendo uma única definição. Ela contém apenas os hosts permitidos, sem senha. Mantenha a porta publicada em 8000 neste roteiro (`BACKEND_PORT=8000`, se a variável estiver definida) e preserve outras entradas de host aprovadas que já sejam necessárias.
+
+O wrapper `.devcontainer/start.py` acrescenta o hostname apenas quando executa a API pelo Python local. Ele não configura o serviço Compose; por isso esse ajuste precisa ser feito no `.env` neste modo. Não use `*` em `ALLOWED_HOSTS`. Para abrir o Swagger no mesmo endereço da API, não é necessário alterar `CORS_ORIGINS`.
+
+#### 4. Construir e iniciar os serviços
+
+Com o banco autorizado, acessível e configurado, valide e inicie:
+
+```bash
+docker compose config --quiet
+docker compose up --build -d --wait
+docker compose ps
+```
+
+O `config --quiet` valida a configuração sem imprimir seus valores. O `up` constrói a imagem, inicia o Redis e aplica as migrações antes de iniciar o Uvicorn. A API executa na porta 8000 dentro do contêiner e é publicada em `127.0.0.1:8000` no Codespace. O `--wait` só conclui com sucesso quando os serviços atendem aos respectivos health checks; o da API consulta o MySQL.
+
+Se o MySQL exigir uma CA fornecida pelo operador, configure `MYSQL_SSL_CA_HOST` com o caminho absoluto do arquivo **no Codespace** e use o [override TLS](MYSQL.md#certificado-mysql-no-compose):
+
+```bash
+docker compose -f compose.yaml -f compose.tls.yaml config --quiet
+docker compose -f compose.yaml -f compose.tls.yaml up --build -d --wait
+docker compose -f compose.yaml -f compose.tls.yaml ps
+```
+
+Nesse modo, use os mesmos dois `-f` também nos comandos de logs, recriação e encerramento apresentados adiante. O override monta a CA somente para leitura e fornece ao serviço o caminho interno correto. Se o build exigir uma CA de proxy corporativo, siga o [fluxo de build com proxy](#build-com-proxy), que é separado do TLS da conexão MySQL.
+
+#### 5. Conferir a API pelo terminal
+
+Após o Compose concluir, execute:
+
+```bash
+curl --fail --show-error http://127.0.0.1:8000/health
+```
+
+O resultado esperado é `{"status":"ok","database":"ok"}`. Se a verificação falhar, consulte `docker compose ps` e `docker compose logs --tail=100 backend redis` antes de tentar abrir a API no navegador. Revise e remova credenciais de qualquer log que precise compartilhar.
+
+#### 6. Encaminhar a porta e acessar pelo navegador
+
+No painel inferior do VS Code, abra a aba **Ports** / **Portas**. Se a porta **8000** já estiver listada, use essa entrada. Se não estiver, clique em **Forward a Port** / **Encaminhar uma porta** e informe `8000`.
+
+Mantenha **Port Visibility → Private**. Clique no ícone de abrir no navegador da linha da porta, ou copie o **Forwarded Address**. Use o endereço fornecido pelo GitHub, com HTTPS; não substitua por `localhost` na barra do navegador do seu computador.
+
+Acrescente os caminhos abaixo ao endereço encaminhado:
+
+| Caminho | O que acessar |
+| --- | --- |
+| `/health` | Saúde da API e conexão SQL; deve retornar HTTP 200 |
+| `/docs` | Swagger UI para visualizar e experimentar as rotas existentes |
+| `/openapi.json` | Contrato OpenAPI, que pode ser importado no Postman |
+| `/api/v1/me` | Rota protegida; sem token, HTTP 401 é esperado |
+
+O GitHub pode solicitar login para acessar a porta privada. Esse login permite atravessar o túnel do Codespace; ele não substitui a autenticação OAuth2/OIDC da aplicação. Para usar o Postman fora do Codespace, é necessário também autenticar o acesso ao túnel privado conforme o cliente; importar o OpenAPI não configura essa autenticação. Não torne a porta pública para contornar o login.
+
+Se aparecer `400 Invalid host header`, compare o hostname do endereço encaminhado com `ALLOWED_HOSTS`. Corrija o `.env` e recrie o serviço conforme o próximo passo. Abrir um novo Codespace pode mudar esse hostname.
+
+#### 7. Acompanhar alterações e logs
+
+Para acompanhar a execução:
+
+```bash
+docker compose logs -f backend
+```
+
+Ctrl+C encerra somente a visualização dos logs. Os serviços continuam ativos em segundo plano. O Compose monta `src` e `migrations` e ativa o reload do código Python; alterações de schema continuam exigindo migrações próprias.
+
+Depois de alterar `.env` ou `ALLOWED_HOSTS`, recrie os serviços para carregar os novos valores:
+
+```bash
+docker compose up -d --force-recreate --wait
+```
+
+Depois de alterar dependências ou Dockerfile, refaça o build:
+
+```bash
+docker compose up --build -d --wait
+```
+
+Cada reinicialização da API executa novamente `alembic upgrade head`, aplicando revisões pendentes. Não execute simultaneamente a tarefa **Codespaces: iniciar API**, pois ela inicia outro servidor Python na mesma porta.
+
+#### 8. Encerrar o ambiente da API
+
+Para parar e remover os serviços criados pelo Compose:
+
+```bash
+docker compose down
+```
+
+Esse comando encerra API e Redis; não remove o MySQL externo. O editor do Codespace continua aberto. Para parar também a máquina do Codespace ao terminar o trabalho, acesse a lista de Codespaces no GitHub, abra o menu do ambiente e escolha **Stop codespace**. Fechar apenas a aba do navegador não equivale a interromper o Codespace imediatamente.
