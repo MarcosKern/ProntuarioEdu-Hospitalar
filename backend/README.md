@@ -269,3 +269,7 @@ python -m pip check
 Não substituir os locks por `pip freeze`, que misturaria novamente os ambientes. Revisar alterações e auditar os dois locks. Os locks foram resolvidos e validados em Linux/Python 3.12; para outras plataformas, conferir também as dependências condicionais e os testes. Dependabot propõe atualizações semanais; nenhuma atualização deve ser mesclada sem a CI e as aprovações exigidas.
 
 Os timeouts de conexão, leitura, escrita e espera do pool MySQL são configuráveis em `.env` por MYSQL_CONNECT_TIMEOUT (5s), MYSQL_READ_TIMEOUT (10s), MYSQL_WRITE_TIMEOUT (10s) e MYSQL_POOL_TIMEOUT (5s). Os valores devem estar entre 0 e 120 segundos, sem incluir zero. Uma falha não repete automaticamente uma operação de escrita.
+
+## GitHub Codespaces
+
+Para ambiente de editor, Docker e extensões padronizados, siga o [guia Codespaces](../.devcontainer/README.md).
