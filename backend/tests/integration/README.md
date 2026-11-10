@@ -1,6 +1,6 @@
 # Testes de integração
 
-A suíte verifica rotas, tokens, limites, SQL real em **MySQL externo de teste** e migrações. Não utiliza arquivo SQLite. Siga a [preparação da suíte](../README.md) antes de executar.
+A suíte verifica rotas, tokens, limites, SQL real em **MySQL externo de teste** e migrações. Não utiliza banco em arquivo. Siga a [preparação da suíte](../README.md) antes de executar.
 
 Use banco descartável separado (`MYSQL_TEST_URL`, nome iniciado por `prontuario_test`). A fixture apaga tabelas técnicas entre casos. Sem essa variável, verificações que precisam do banco são puladas. Nunca use o banco de desenvolvimento ou produção, nem rode a suíte em paralelo no mesmo banco.
 

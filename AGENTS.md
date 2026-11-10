@@ -9,7 +9,7 @@
 
 ## Arquitetura
 
-O responsável escolheu MVC para simplificar o Back-end: Models, Views e Controllers, com rotas e configuração de apoio. A decisão está na ADR 0001. Não recrie camadas hexagonais no servidor. O ambiente de desenvolvimento usa FastAPI, SQLAlchemy/MySQL e validação OAuth2/OIDC por JWT, conforme ADR 0002. Provedor real e tecnologias dos clientes permanecem pendentes. Antes de novas decisões arquiteturais ou dependências de aplicação, registre alternativas, justificativa e testes em ADR e obtenha aprovação explícita do responsável. Veja `docs/architecture-options.md`.
+O responsável escolheu MVC para simplificar o Back-end: Models, Views e Controllers, com rotas e configuração de apoio. A decisão está na ADR 0001. Não recrie camadas hexagonais no servidor. O ambiente de desenvolvimento usa FastAPI, SQLAlchemy/MySQL e validação OAuth2/OIDC por JWT, conforme ADR 0004. Provedor real e tecnologias dos clientes permanecem pendentes. Antes de novas decisões arquiteturais ou dependências de aplicação, registre alternativas, justificativa e testes em ADR e obtenha aprovação explícita do responsável. Veja `docs/architecture-options.md`.
 
 ## Git e revisão
 
@@ -22,3 +22,7 @@ O responsável escolheu MVC para simplificar o Back-end: Models, Views e Control
 ## Ambiente
 
 Use o checkout existente em `/workspace/ProntuarioEdu-Hospitalar`. Não crie worktrees, salvo solicitação explícita. De `backend`, executar `python scripts/dev.py --setup` para preparar/iniciar o venv, ou `docker compose up --build -d --wait`. Testar com `.venv/bin/python -m pytest -q`; integração MySQL exige banco separado e `MYSQL_TEST_ALLOW_RESET` igual ao nome do banco de teste. Consulte o README para configuração e limites.
+
+## Banco e Codespaces
+
+MySQL 8.4 é o único mecanismo suportado. Requirements não devem incluir drivers de outro mecanismo. O banco e a arquitetura enviados pelo responsável estão adiados: não incorporar os anexos nem implementar suas tabelas, Models, rotas ou estrutura até nova solicitação explícita. Não criar dados de demonstração. O Dev Container prepara ferramentas e extensões sem conectar ou migrar banco; a inicialização da API é uma ação separada.

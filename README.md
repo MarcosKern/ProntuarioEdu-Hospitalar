@@ -172,3 +172,7 @@ Veja o [guia operacional](backend/SECURITY.md) e a [ADR 0003](docs/adr/0003-segu
 ## Banco MySQL externo
 
 DATABASE_URL é obrigatória. Consulte o [guia atualizado](backend/MYSQL.md) e a [ADR 0004](docs/adr/0004-mysql-externo.md). O Compose não inicia banco local.
+
+## GitHub Codespaces
+
+A configuração em [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json) padroniza Python 3.12, venv, dependências dev, Docker/Compose e extensões Postman, cliente MySQL, Python e Ruff. Siga o [passo a passo para executar a configuração no GitHub](.devcontainer/README.md#passo-a-passo-para-executar-a-configuração-no-github), com criação do Codespace, reconstrução de um ambiente existente e verificações da instalação. O banco continua MySQL externo; nenhuma importação SQL ou migração acontece automaticamente na criação do ambiente.
