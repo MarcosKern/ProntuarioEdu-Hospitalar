@@ -94,6 +94,89 @@ Uma pessoa pode atuar em mais de uma frente. A separação orienta onde escrever
 
 Rotas e esquemas de entrada/saída alimentam o OpenAPI, apresentado pelo Swagger UI. Views não devem serializar campos privados por padrão. Veja o [README principal](../README.md#swagger-no-back-end).
 
+### Pré-configuração implementada
+
+O arquivo [`config/swagger.py`](src/prontuario_backend/config/swagger.py) centraliza título, versão, descrição, grupos de rotas e comportamento do Swagger. As rotas existentes já têm resumo, descrição, identificador da operação e schemas de respostas, inclusive erros. Não é necessário instalar um pacote Swagger separado: o FastAPI já gera o contrato.
+
+| Endereço | Finalidade |
+| --- | --- |
+| `/docs` | Interface Swagger, disponível em desenvolvimento e testes |
+| `/openapi.json` | Contrato para clientes, Postman e validação automatizada |
+| `/docs/oauth2-redirect` | Retorno técnico do login OAuth2 iniciado pelo Swagger |
+
+O Swagger usa a mesma origem do navegador para chamar a API. Assim, no Codespace, as requisições continuam no endereço HTTPS encaminhado pelo GitHub. Autorizações não são persistidas pelo Swagger no armazenamento do navegador. Em produção, a interface, o contrato e o retorno OAuth2 ficam desabilitados.
+
+### Usar o Swagger em desenvolvimento
+
+1. Configure o ambiente com `APP_ENV=development` e inicie o Back-end pelo [roteiro do Codespace](#rodar-o-contêiner-de-desenvolvimento-e-acessar-a-api) ou pelos modos locais deste README. A execução atual da API exige MySQL de desenvolvimento autorizado; a configuração do Swagger não importa o banco ou a arquitetura enviados.
+2. Abra a porta encaminhada do Codespace e acrescente `/docs`. No modo local, use `http://127.0.0.1:8000/docs`. Mantenha o host de acesso em `ALLOWED_HOSTS`.
+3. Expanda uma operação para consultar descrição, parâmetros, schema e códigos de resposta. Clique em **Try it out** e depois em **Execute** para realizar uma chamada real. A rota `/health` consulta o banco; ela não exige token.
+4. Para operações protegidas, configure o provedor real conforme a próxima seção e use **Authorize**. O login na porta privada do GitHub permite acessar o Codespace, mas não autentica o usuário da API.
+
+Não há novo endpoint clínico, conta padrão ou geração de tokens de demonstração. Sem autenticação, `/api/v1/me` continua respondendo HTTP 401.
+
+### Preparar o botão Authorize com OAuth2 e PKCE
+
+Os campos `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_JWKS_URL`, `OIDC_AUTHORIZATION_URL` e `OIDC_TOKEN_URL` devem receber os valores reais fornecidos pelo responsável pelo provedor. Eles já são necessários para o fluxo de autenticação existente. Enquanto o provedor não estiver configurado, o Swagger pode ser visualizado, mas o botão Authorize não realiza login funcional.
+
+Para preparar o cliente do Swagger no provedor:
+
+1. Registre um **cliente público**, com Authorization Code e **PKCE S256**, destinado ao Swagger de desenvolvimento. Esse fluxo no navegador não usa client secret.
+2. Cadastre como redirect URI o endereço exato pelo qual você abre o Swagger, seguido de `/docs/oauth2-redirect`. Para acesso local pela porta padrão, é `http://127.0.0.1:8000/docs/oauth2-redirect`. No Codespace, copie a origem HTTPS da aba **Ports** e acrescente esse caminho; não use o endereço interno do contêiner. O retorno local depende de o provedor permitir HTTP de loopback para desenvolvimento.
+3. Se o provedor exigir uma lista de origens permitidas para a troca do código, inclua a origem do Swagger na configuração do provedor. A troca de tokens ocorre pelo navegador. Não é preciso liberar CORS da API para o Swagger que usa sua própria origem.
+4. Copie o **client ID público** para `SWAGGER_CLIENT_ID` no `.env` do Back-end. O campo está previsto em [`.env.example`](.env.example) e pode ficar vazio enquanto o login não for configurado. O client ID não é necessariamente igual ao `OIDC_AUDIENCE`, que identifica a audiência aceita pela API.
+5. Reinicie a execução Python ou recrie o serviço Compose para carregar as variáveis. No Compose, use `docker compose up -d --force-recreate --wait`, com os dois arquivos `-f` se estiver usando o override TLS.
+6. Reabra `/docs`, clique em **Authorize** e conclua o login no provedor real. Depois, execute `GET /api/v1/me` para verificar a identidade autenticada. O provedor precisa emitir um access token compatível com a validação existente: JWT RS256, issuer e audience configurados, além de `exp` e `sub`.
+
+Não coloque client secret em `.env` para o Swagger, no JSON da documentação ou no navegador. A pré-configuração não registra o cliente automaticamente no provedor. Se o hostname do Codespace mudar, atualize a redirect URI no provedor e `ALLOWED_HOSTS` no Back-end.
+
+### Exemplo: configurar a documentação de um endpoint
+
+O exemplo abaixo é um recorte da rota **já implementada** em [`routes/api.py`](src/prontuario_backend/routes/api.py). Ele mostra como documentar `GET /api/v1/me`; não precisa ser copiado para criar uma segunda rota.
+
+```python
+class IdentityResponse(BaseModel):
+    subject: str
+
+
+@router.get(
+    "/api/v1/me",
+    response_model=IdentityResponse,
+    tags=["Autenticação"],
+    summary="Consultar a identidade autenticada",
+    operation_id="get_current_identity",
+    description="Valida o token do provedor OIDC e retorna seu subject. Exige autenticação Bearer.",
+    responses={
+        status: ERROR_RESPONSES[status]
+        for status in (401, 405, 413, 429, 500, 503)
+    },
+)
+def identity(user=Depends(current_user)):
+    return IdentityResponse(subject=user["sub"])
+```
+
+Nesse arquivo, `BaseModel` vem de Pydantic, `Depends` vem de FastAPI, `router` é uma instância de `APIRouter`, `current_user` é a dependência de autenticação existente e `ERROR_RESPONSES` vem de `views/errors.py`.
+
+| Configuração | Efeito no Swagger e na API |
+| --- | --- |
+| Caminho e método do decorator | Registram a operação que aparecerá na documentação |
+| `response_model` | Define o contrato da resposta de sucesso e filtra os campos retornados |
+| `tags` | Agrupa a operação; os grupos atuais são descritos em `config/swagger.py` |
+| `summary` e `description` | Explicam o objetivo e os requisitos da chamada |
+| `operation_id` | Identifica a operação no OpenAPI; deve ser único e estável para os clientes |
+| `responses` | Documenta os erros com o schema compartilhado; não implementa seu tratamento |
+| `Depends(current_user)` | Exige identidade válida e faz o esquema OAuth2 aparecer nessa operação |
+
+Ao alterar um endpoint real, mantenha a implementação e esses metadados coerentes. Para entrada de dados futura, declare um Model Pydantic adequado ao contrato aprovado: o FastAPI incluirá seus campos no OpenAPI. Documentar um erro ou uma regra não substitui implementá-los e testá-los.
+
+Para conferir esta pré-configuração sem banco, de `backend` e sem `MYSQL_TEST_URL` no ambiente:
+
+```bash
+.venv/bin/python -m pytest -q tests/contract/test_swagger.py
+```
+
+Os testes verificam acesso pelo hostname do Codespace, retorno OAuth2 na mesma origem, PKCE, configuração pública do cliente e manutenção da exigência de autenticação. O teste de produção em `tests/integration/test_security.py` também confere que a documentação e o retorno OAuth2 respondem 404.
+
 Em `tests/unit/`, validar texto vazio, coordenação e respostas. Em `tests/integration/`, verificar acesso negado sem gravação e persistência/transação no banco de teste. Em `tests/contract/`, verificar respostas e OpenAPI. A seção de ambiente descreve os testes iniciais implementados; os testes do exemplo clínico continuam futuros.
 
 As instruções abaixo descrevem o ambiente inicial implementado com FastAPI, SQLAlchemy e MySQL. O provedor real de autenticação ainda precisa ser configurado.
@@ -269,3 +352,150 @@ python -m pip check
 Não substituir os locks por `pip freeze`, que misturaria novamente os ambientes. Revisar alterações e auditar os dois locks. Os locks foram resolvidos e validados em Linux/Python 3.12; para outras plataformas, conferir também as dependências condicionais e os testes. Dependabot propõe atualizações semanais; nenhuma atualização deve ser mesclada sem a CI e as aprovações exigidas.
 
 Os timeouts de conexão, leitura, escrita e espera do pool MySQL são configuráveis em `.env` por MYSQL_CONNECT_TIMEOUT (5s), MYSQL_READ_TIMEOUT (10s), MYSQL_WRITE_TIMEOUT (10s) e MYSQL_POOL_TIMEOUT (5s). Os valores devem estar entre 0 e 120 segundos, sem incluir zero. Uma falha não repete automaticamente uma operação de escrita.
+
+## GitHub Codespaces
+
+### Rodar o contêiner de desenvolvimento e acessar a API
+
+Este passo a passo usa o Docker Compose do Back-end **dentro do Codespace**. Primeiro, crie ou reconstrua o Codespace conforme o [guia de configuração](../.devcontainer/README.md#passo-a-passo-para-executar-a-configuração-no-github). O contêiner do Codespace fornece o editor e as ferramentas; o Compose cria os serviços da API e do Redis nesse ambiente.
+
+O banco e a arquitetura enviados pelo responsável continuam adiados. Os comandos abaixo descrevem a execução da implementação técnica existente; não importam os anexos. **Ao subir a API, o Compose aplica as migrações Alembic existentes no MySQL configurado. Execute essa etapa somente quando houver um banco de desenvolvimento autorizado.**
+
+#### 1. Abrir o terminal e conferir o Docker
+
+No editor do Codespace, clique em **Terminal → New Terminal**. A partir da raiz do repositório, entre na pasta do Back-end:
+
+```bash
+cd backend
+docker info
+docker compose version
+```
+
+O primeiro comando Docker deve mostrar informações do servidor, e o segundo deve mostrar Compose 2.24 ou posterior. Se o Docker estiver indisponível, confira o log de criação e reconstrua o Codespace pelo guia; não prossiga supondo que a instalação terminou. Todos os comandos seguintes partem de `backend`.
+
+Se você quer apenas construir a imagem por enquanto, sem conectar ao banco, pode executar:
+
+```bash
+docker build -t prontuario-backend-dev .
+```
+
+Esse comando instala as dependências e prepara a imagem, mas não inicia a API, o Redis ou migrações. Para executar os serviços, continue somente depois de configurar a conexão descrita a seguir.
+
+#### 2. Preparar a configuração privada do Back-end
+
+O Codespace normalmente já criou `backend/.env`. Caso o arquivo ainda não exista:
+
+```bash
+[ -f .env ] || cp .env.example .env
+```
+
+Abra esse arquivo no editor e mantenha `APP_ENV=development` para disponibilizar o Swagger. Configure `DATABASE_URL` com o MySQL externo de desenvolvimento conforme o [guia MySQL](MYSQL.md#preparar-a-conexão). A conexão precisa funcionar de dentro do contêiner; `localhost` não representa o servidor externo. Não é necessário instalar MySQL Server no Codespace.
+
+Você pode fornecer `DATABASE_URL` por segredo do GitHub Codespaces em vez de gravá-la no `.env`. Nesse caso, a variável recebida pelo terminal tem precedência na interpolação do Compose. O serviço usa esse valor explicitamente. Para os demais campos deste roteiro, edite o `.env`: o Compose carrega esse arquivo no serviço, mas não encaminha automaticamente todas as variáveis do terminal.
+
+Não versione `.env`, certificados privados ou credenciais. OIDC pode ser configurado depois; sem provedor e token válidos, as rotas protegidas continuam bloqueadas.
+
+#### 3. Autorizar o endereço encaminhado do Codespace
+
+O navegador acessará um hostname do GitHub, diferente de `localhost`. Para descobrir o hostname exato da porta 8000, execute no terminal do Codespace:
+
+```bash
+.venv/bin/python - <<'PY'
+import json
+import os
+
+name = os.environ["CODESPACE_NAME"]
+domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev")
+host = f"{name}-8000.{domain}"
+print("ALLOWED_HOSTS=" + json.dumps(["localhost", "127.0.0.1", host]))
+PY
+```
+
+Copie a linha gerada e substitua a linha `ALLOWED_HOSTS` no `.env`, mantendo uma única definição. Ela contém apenas os hosts permitidos, sem senha. Mantenha a porta publicada em 8000 neste roteiro (`BACKEND_PORT=8000`, se a variável estiver definida) e preserve outras entradas de host aprovadas que já sejam necessárias.
+
+O wrapper `.devcontainer/start.py` acrescenta o hostname apenas quando executa a API pelo Python local. Ele não configura o serviço Compose; por isso esse ajuste precisa ser feito no `.env` neste modo. Não use `*` em `ALLOWED_HOSTS`. Para abrir o Swagger no mesmo endereço da API, não é necessário alterar `CORS_ORIGINS`.
+
+#### 4. Construir e iniciar os serviços
+
+Com o banco autorizado, acessível e configurado, valide e inicie:
+
+```bash
+docker compose config --quiet
+docker compose up --build -d --wait
+docker compose ps
+```
+
+O `config --quiet` valida a configuração sem imprimir seus valores. O `up` constrói a imagem, inicia o Redis e aplica as migrações antes de iniciar o Uvicorn. A API executa na porta 8000 dentro do contêiner e é publicada em `127.0.0.1:8000` no Codespace. O `--wait` só conclui com sucesso quando os serviços atendem aos respectivos health checks; o da API consulta o MySQL.
+
+Se o MySQL exigir uma CA fornecida pelo operador, configure `MYSQL_SSL_CA_HOST` com o caminho absoluto do arquivo **no Codespace** e use o [override TLS](MYSQL.md#certificado-mysql-no-compose):
+
+```bash
+docker compose -f compose.yaml -f compose.tls.yaml config --quiet
+docker compose -f compose.yaml -f compose.tls.yaml up --build -d --wait
+docker compose -f compose.yaml -f compose.tls.yaml ps
+```
+
+Nesse modo, use os mesmos dois `-f` também nos comandos de logs, recriação e encerramento apresentados adiante. O override monta a CA somente para leitura e fornece ao serviço o caminho interno correto. Se o build exigir uma CA de proxy corporativo, siga o [fluxo de build com proxy](#build-com-proxy), que é separado do TLS da conexão MySQL.
+
+#### 5. Conferir a API pelo terminal
+
+Após o Compose concluir, execute:
+
+```bash
+curl --fail --show-error http://127.0.0.1:8000/health
+```
+
+O resultado esperado é `{"status":"ok","database":"ok"}`. Se a verificação falhar, consulte `docker compose ps` e `docker compose logs --tail=100 backend redis` antes de tentar abrir a API no navegador. Revise e remova credenciais de qualquer log que precise compartilhar.
+
+#### 6. Encaminhar a porta e acessar pelo navegador
+
+No painel inferior do VS Code, abra a aba **Ports** / **Portas**. Se a porta **8000** já estiver listada, use essa entrada. Se não estiver, clique em **Forward a Port** / **Encaminhar uma porta** e informe `8000`.
+
+Mantenha **Port Visibility → Private**. Clique no ícone de abrir no navegador da linha da porta, ou copie o **Forwarded Address**. Use o endereço fornecido pelo GitHub, com HTTPS; não substitua por `localhost` na barra do navegador do seu computador.
+
+Acrescente os caminhos abaixo ao endereço encaminhado:
+
+| Caminho | O que acessar |
+| --- | --- |
+| `/health` | Saúde da API e conexão SQL; deve retornar HTTP 200 |
+| `/docs` | Swagger UI para visualizar e experimentar as rotas existentes |
+| `/openapi.json` | Contrato OpenAPI, que pode ser importado no Postman |
+| `/api/v1/me` | Rota protegida; sem token, HTTP 401 é esperado |
+
+O GitHub pode solicitar login para acessar a porta privada. Esse login permite atravessar o túnel do Codespace; ele não substitui a autenticação OAuth2/OIDC da aplicação. Para usar o Postman fora do Codespace, é necessário também autenticar o acesso ao túnel privado conforme o cliente; importar o OpenAPI não configura essa autenticação. Não torne a porta pública para contornar o login.
+
+Se aparecer `400 Invalid host header`, compare o hostname do endereço encaminhado com `ALLOWED_HOSTS`. Corrija o `.env` e recrie o serviço conforme o próximo passo. Abrir um novo Codespace pode mudar esse hostname.
+
+#### 7. Acompanhar alterações e logs
+
+Para acompanhar a execução:
+
+```bash
+docker compose logs -f backend
+```
+
+Ctrl+C encerra somente a visualização dos logs. Os serviços continuam ativos em segundo plano. O Compose monta `src` e `migrations` e ativa o reload do código Python; alterações de schema continuam exigindo migrações próprias.
+
+Depois de alterar `.env` ou `ALLOWED_HOSTS`, recrie os serviços para carregar os novos valores:
+
+```bash
+docker compose up -d --force-recreate --wait
+```
+
+Depois de alterar dependências ou Dockerfile, refaça o build:
+
+```bash
+docker compose up --build -d --wait
+```
+
+Cada reinicialização da API executa novamente `alembic upgrade head`, aplicando revisões pendentes. Não execute simultaneamente a tarefa **Codespaces: iniciar API**, pois ela inicia outro servidor Python na mesma porta.
+
+#### 8. Encerrar o ambiente da API
+
+Para parar e remover os serviços criados pelo Compose:
+
+```bash
+docker compose down
+```
+
+Esse comando encerra API e Redis; não remove o MySQL externo. O editor do Codespace continua aberto. Para parar também a máquina do Codespace ao terminar o trabalho, acesse a lista de Codespaces no GitHub, abra o menu do ambiente e escolha **Stop codespace**. Fechar apenas a aba do navegador não equivale a interromper o Codespace imediatamente.

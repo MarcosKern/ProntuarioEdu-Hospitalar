@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     oidc_jwks_url: str = ""
     oidc_authorization_url: str = ""
     oidc_token_url: str = ""
+    swagger_client_id: str = ""
 
     @model_validator(mode="after")
     def validate_environment(self):

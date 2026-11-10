@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Codespaces: iniciar API",
+      "type": "process",
+      "command": "${workspaceFolder}/backend/.venv/bin/python",
+      "args": ["${workspaceFolder}/.devcontainer/start.py"],
+      "options": {"cwd": "${workspaceFolder}/backend"},
+      "problemMatcher": []
+    },
+    {
+      "label": "Backend: testes",
+      "type": "process",
+      "command": "${workspaceFolder}/backend/.venv/bin/python",
+      "args": ["-m", "pytest", "-q"],
+      "options": {"cwd": "${workspaceFolder}/backend"},
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Backend: lint",
+      "type": "process",
+      "command": "${workspaceFolder}/backend/.venv/bin/python",
+      "args": ["-m", "ruff", "check", "src", "tests", "scripts"],
+      "options": {"cwd": "${workspaceFolder}/backend"},
+      "problemMatcher": []
+    }
+  ]
+}
