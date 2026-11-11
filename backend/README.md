@@ -1,6 +1,10 @@
 # Back-end Python com MVC
 
-> **Banco padrão: MySQL externo.** Configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há banco local ou fallback.
+> **Banco padrão: MySQL externo.** No Compose base, configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há fallback automático para banco local.
+
+Para desenvolvimento com o SQL recebido já inicializado em um serviço MySQL próprio, use o [modo opcional MySQL em contêiner](docker/mysql/README.md). O guia inclui preparação das credenciais, inicialização do schema, conexão do cliente e acesso à API no Codespace.
+
+Para **testes com conexão fixa**, execute de `backend` `python3 scripts/test_env.py`. O script sobe [`compose.test.yaml`](compose.test.yaml), aguarda os serviços e exibe as variáveis de conexão no terminal. Veja o [guia do Compose de testes](docker/mysql/TESTING.md).
 
 ## Documentos do banco de domínio
 

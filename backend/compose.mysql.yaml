@@ -1,0 +1,36 @@
+# Desenvolvimento opt-in. Usar com compose.yaml e --env-file .env.mysql.
+services:
+  mysql:
+    image: prontuario-mysql-dev:8.4
+    build:
+      context: .
+      dockerfile: docker/mysql/Dockerfile
+    environment:
+      MYSQL_DATABASE: prontuarioedu
+      MYSQL_USER: ${MYSQL_USER:?Execute scripts/mysql_dev.py}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Execute scripts/mysql_dev.py}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Execute scripts/mysql_dev.py}
+    # As migrações técnicas existentes criam triggers com a conta de desenvolvimento.
+    command: ["--log-bin-trust-function-creators=ON"]
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/prontuario-mysql-healthcheck"]
+      interval: 5s
+      timeout: 5s
+      start_period: 60s
+      retries: 20
+  backend:
+    environment:
+      # Destino interno explícito: DATABASE_URL exportada no Codespace não escolhe outro servidor.
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:?Execute scripts/mysql_dev.py}:${MYSQL_PASSWORD:?Execute scripts/mysql_dev.py}@mysql:3306/prontuarioedu?charset=utf8mb4
+      APP_ENV: development
+      MYSQL_SSL_CA: ""
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_dev_data:

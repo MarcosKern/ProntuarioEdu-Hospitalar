@@ -171,9 +171,9 @@ Veja o [guia operacional](backend/SECURITY.md) e a [ADR 0003](docs/adr/0003-segu
 
 ## Banco MySQL externo
 
-DATABASE_URL é obrigatória. Consulte o [guia atualizado](backend/MYSQL.md) e a [ADR 0004](docs/adr/0004-mysql-externo.md). O Compose não inicia banco local.
+DATABASE_URL é obrigatória. Consulte o [guia atualizado](backend/MYSQL.md) e a [ADR 0004](docs/adr/0004-mysql-externo.md). O Compose base não inicia banco local. Para desenvolvimento, há um [modo opcional MySQL em contêiner](backend/docker/mysql/README.md) com o SQL inicial embarcado e conexão preparada para a API.
 
-O [modelo de domínio revisado para MySQL](backend/docs/database/README.md) está documentado dentro do Back-end, com SQL, dicionário de dados e relacionamentos. Ele permanece separado das migrações técnicas existentes; nenhuma importação é automática.
+O [modelo de domínio revisado para MySQL](backend/docs/database/README.md) está documentado dentro do Back-end, com SQL, dicionário de dados e relacionamentos. Ele permanece separado das migrações técnicas existentes; sua inicialização automática é exclusiva do modo MySQL de desenvolvimento escolhido explicitamente.
 
 ## GitHub Codespaces
 

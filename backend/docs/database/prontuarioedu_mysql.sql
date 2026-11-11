@@ -1,7 +1,7 @@
 -- ProntuárioEdu v2.0 | Referência física para MySQL 8.4 (InnoDB)
 -- Modelo recebido e revisado para MySQL; 64 tabelas e 121 vínculos FK.
 -- SQL para instalação inicial em banco vazio; DDL MySQL provoca commits implícitos.
--- Referência documental: não é uma migração Alembic nem deve ser importada automaticamente.
+-- Referência física e inicialização do modo MySQL de desenvolvimento; não é migração Alembic.
 -- DATETIME(6) é armazenado em UTC por convenção da aplicação; ajustar conexão em UTC.
 -- UUIDs mantidos como CHAR(36) ascii_bin (compatibilidade humana; não BINARY(16)).
 -- Um banco MySQL com seis domínios por prefixo dominio__tabela; não são seis bancos separados.

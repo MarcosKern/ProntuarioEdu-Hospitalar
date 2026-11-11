@@ -169,7 +169,9 @@ docker compose config --quiet
 docker compose up --build -d --wait
 ```
 
-Não executar junto à API local na mesma porta. Compose inicia API e Redis, não MySQL. Para esse caminho com URL encaminhada, incluir o hostname exato do Codespace em `ALLOWED_HOSTS` (JSON) no `.env`/segredo antes de recriar o serviço: o wrapper de inicialização local não modifica o ambiente de um contêiner Compose independente. Certificados MySQL precisam da montagem do [override TLS](../backend/compose.tls.yaml) e caminhos do arquivo visíveis ao daemon Docker interno.
+Não executar junto à API local na mesma porta. O Compose base inicia API e Redis, não MySQL. Para esse caminho com URL encaminhada, incluir o hostname exato do Codespace em `ALLOWED_HOSTS` (JSON) no `.env`/segredo antes de recriar o serviço: o wrapper de inicialização local não modifica o ambiente de um contêiner Compose independente. Certificados MySQL precisam da montagem do [override TLS](../backend/compose.tls.yaml) e caminhos do arquivo visíveis ao daemon Docker interno.
+
+Para iniciar também um MySQL de desenvolvimento com o SQL recebido, siga o [modo opcional MySQL em contêiner](../backend/docker/mysql/README.md). Ele é iniciado por uma ação explícita do desenvolvedor e não pelo `postCreateCommand` do Codespace. Mantenha `ALLOWED_HOSTS` da API no `.env` e a porta SQL restrita ao ambiente remoto.
 
 ## Limite da validação
 

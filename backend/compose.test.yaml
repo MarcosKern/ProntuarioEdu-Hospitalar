@@ -1,0 +1,59 @@
+# Credenciais públicas e fixas, exclusivamente para o ambiente de testes.
+# Independente de .env, .env.mysql e do Compose de desenvolvimento.
+name: prontuario-test
+services:
+  mysql:
+    image: prontuario-mysql-test:8.4
+    build:
+      context: .
+      dockerfile: docker/mysql/Dockerfile
+      target: test
+    environment:
+      MYSQL_DATABASE: prontuarioedu
+      MYSQL_USER: prontuario_test
+      MYSQL_PASSWORD: test-only-password
+      MYSQL_ROOT_PASSWORD: test-only-root-password
+    command: ["--log-bin-trust-function-creators=ON"]
+    ports:
+      - "127.0.0.1:${MYSQL_TEST_PORT:-3307}:3306"
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/prontuario-mysql-healthcheck"]
+      interval: 5s
+      timeout: 5s
+      start_period: 60s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save '' --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  backend:
+    image: prontuario-backend-test
+    build: .
+    environment:
+      APP_ENV: test
+      DATABASE_URL: mysql+pymysql://prontuario_test:test-only-password@mysql:3306/prontuarioedu?charset=utf8mb4
+      REDIS_URL: redis://redis:6379/0
+      ALLOWED_HOSTS: ${TEST_ALLOWED_HOSTS:-["localhost","127.0.0.1"]}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${BACKEND_TEST_PORT:-8001}:8000"
+    command: sh -c 'python -m alembic upgrade head && python -m uvicorn prontuario_backend.main:app --host 0.0.0.0 --port 8000 --no-access-log --no-proxy-headers'
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 20
+
+volumes:
+  mysql_test_data:

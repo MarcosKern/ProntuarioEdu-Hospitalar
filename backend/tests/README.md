@@ -1,5 +1,7 @@
 # Testar o Back-end
 
+Para subir o ambiente com **MySQL, Redis, API e credenciais fixas exibidas no terminal**, consulte o [Compose exclusivo de testes](../docker/mysql/TESTING.md). De `backend`, execute `python3 scripts/test_env.py`. O banco `prontuario_test` é separado do banco `prontuarioedu` da API.
+
 Execute de `backend`, com o venv já preparado e as dependências de `requirements-dev.txt` instaladas. Os comandos são os mesmos da CI:
 
 ```bash

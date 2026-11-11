@@ -48,7 +48,9 @@ O material recebido contém campos e tabelas para senha local, recuperação de 
 
 Não há INSERTs, usuários padrão ou pacientes de demonstração no SQL. A coluna `ficticio` faz parte da modelagem educacional recebida; sua presença e seu default não inserem pacientes. Os cenários ilustrativos da documentação não são scripts de carga.
 
-## Aplicação futura do schema
+## Aplicação do schema
+
+O responsável autorizou a inicialização deste SQL no [modo opcional MySQL em contêiner de desenvolvimento](../../docker/mysql/README.md). Esse caminho embarca o arquivo na imagem e executa a criação do banco e das tabelas no primeiro uso de um volume vazio. Não implementa os Models, endpoints ou invariantes de negócio descritos neste material. Para o servidor externo e para integração de domínio na aplicação, as etapas abaixo continuam necessárias.
 
 O arquivo SQL contém `CREATE DATABASE IF NOT EXISTS prontuarioedu` e `USE prontuarioedu`. **Selecionar outro banco na linha de comando não muda esse destino.** Não importe o arquivo no servidor real como parte da configuração do editor ou da API.
 
@@ -63,7 +65,7 @@ Antes da implementação, será necessário:
 5. Definir auditoria e retificação das tabelas de domínio. O DDL recebido não cria triggers append-only para essas tabelas; os triggers existentes da aplicação protegem apenas a auditoria técnica.
 6. Executar testes de integridade, autorização, concorrência e restauração em um MySQL descartável separado, sem apontar a suíte ao banco de aplicação.
 
-Nenhum hook de Codespaces, script de inicialização, Compose ou migração existente importa estes documentos automaticamente.
+O Compose base, as migrações técnicas existentes e os hooks de Codespaces não importam o SQL. A importação automática ocorre somente ao iniciar explicitamente o modo MySQL de desenvolvimento com um volume vazio.
 
 ## Validação desta revisão
 
