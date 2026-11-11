@@ -2,6 +2,12 @@
 
 > **Banco padrão: MySQL externo.** Configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há banco local ou fallback.
 
+## Documentos do banco de domínio
+
+Os documentos recebidos foram [revisados para MySQL 8.4 e organizados em `docs/database`](docs/database/README.md). A pasta contém SQL de referência, modelo com dicionário das 64 tabelas, regras de negócio propostas e grafo dos 121 relacionamentos FK.
+
+Essa documentação é separada das migrações técnicas já utilizadas pelo backend. Sua inclusão não importa o schema nem implementa os módulos de domínio. Consulte os limites e o plano de integração no guia antes de iniciar essa etapa.
+
 
 O Back-end usará MVC para facilitar a leitura e a divisão do trabalho de uma turma intermediária. Continua sendo um único servidor para Desktop, Web e futuras integrações. MVC organiza o código; não exige dividir o servidor em serviços.
 

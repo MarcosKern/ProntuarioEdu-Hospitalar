@@ -25,4 +25,4 @@ Use o checkout existente em `/workspace/ProntuarioEdu-Hospitalar`. Não crie wor
 
 ## Banco e Codespaces
 
-MySQL 8.4 é o único mecanismo suportado. Requirements não devem incluir drivers de outro mecanismo. O banco e a arquitetura enviados pelo responsável estão adiados: não incorporar os anexos nem implementar suas tabelas, Models, rotas ou estrutura até nova solicitação explícita. Não criar dados de demonstração. O Dev Container prepara ferramentas e extensões sem conectar ou migrar banco; a inicialização da API é uma ação separada.
+MySQL 8.4 é o único mecanismo suportado. Requirements não devem incluir drivers de outro mecanismo. O responsável autorizou incorporar os documentos recebidos, revisados para MySQL, em `backend/docs/database`. O SQL dessa pasta é referência documental, separado do Alembic técnico atual. A implementação das tabelas de domínio, Models, rotas e integrações permanece adiada até solicitação explícita; não importar o SQL automaticamente. Não criar dados de demonstração. O Dev Container prepara ferramentas e extensões sem conectar ou migrar banco; a inicialização da API é uma ação separada.

@@ -1,0 +1,198 @@
+flowchart LR
+  subgraph cadastro["cadastro"]
+    cadastro__unidades["unidades"]
+    cadastro__leitos["leitos"]
+    cadastro__pacientes["pacientes"]
+    cadastro__profissionais["profissionais"]
+    cadastro__usuarios["usuarios"]
+    cadastro__perfis["perfis"]
+    cadastro__permissoes["permissoes"]
+    cadastro__perfil_permissao["perfil_permissao"]
+    cadastro__usuario_perfil["usuario_perfil"]
+    cadastro__sessoes_usuario["sessoes_usuario"]
+    cadastro__recuperacoes_acesso["recuperacoes_acesso"]
+    cadastro__fatores_mfa["fatores_mfa"]
+    cadastro__turmas["turmas"]
+    cadastro__turma_alunos["turma_alunos"]
+    cadastro__grupos_trabalho["grupos_trabalho"]
+    cadastro__grupo_membros["grupo_membros"]
+    cadastro__atendimentos["atendimentos"]
+    cadastro__ocupacoes_leito["ocupacoes_leito"]
+    cadastro__alocacoes_pacientes["alocacoes_pacientes"]
+  end
+  subgraph assistencial["assistencial"]
+    assistencial__contextos_assistenciais["contextos_assistenciais"]
+    assistencial__medicamentos["medicamentos"]
+    assistencial__medicamento_contextos["medicamento_contextos"]
+    assistencial__agendamentos["agendamentos"]
+    assistencial__historico_contextos_atendimento["historico_contextos_atendimento"]
+    assistencial__prescricoes["prescricoes"]
+    assistencial__prescricao_itens["prescricao_itens"]
+    assistencial__aprazamentos["aprazamentos"]
+    assistencial__checagens_mar["checagens_mar"]
+    assistencial__administracoes_medicamentos["administracoes_medicamentos"]
+    assistencial__historico_prescricao["historico_prescricao"]
+  end
+  subgraph clinico["clinico"]
+    clinico__anotacoes["anotacoes"]
+    clinico__sinais_vitais["sinais_vitais"]
+    clinico__catalogo_escalas["catalogo_escalas"]
+    clinico__avaliacoes_escalas["avaliacoes_escalas"]
+    clinico__respostas_escalas["respostas_escalas"]
+    clinico__protocolos_sepse["protocolos_sepse"]
+    clinico__sepse_bundles["sepse_bundles"]
+    clinico__dispositivos_paciente["dispositivos_paciente"]
+    clinico__movimentos_hidricos["movimentos_hidricos"]
+  end
+  subgraph cirurgia_maternidade["cirurgia_maternidade"]
+    cirurgia_maternidade__procedimentos_cirurgicos["procedimentos_cirurgicos"]
+    cirurgia_maternidade__modelos_checklist["modelos_checklist"]
+    cirurgia_maternidade__itens_checklist["itens_checklist"]
+    cirurgia_maternidade__partos["partos"]
+    cirurgia_maternidade__execucoes_checklist["execucoes_checklist"]
+    cirurgia_maternidade__respostas_checklist["respostas_checklist"]
+    cirurgia_maternidade__recem_nascidos["recem_nascidos"]
+    cirurgia_maternidade__avaliacoes_apgar["avaliacoes_apgar"]
+    cirurgia_maternidade__avaliacoes_capurro["avaliacoes_capurro"]
+    cirurgia_maternidade__triagens_neonatais["triagens_neonatais"]
+  end
+  subgraph cme["cme"]
+    cme__materiais_cme["materiais_cme"]
+    cme__movimentacoes_estoque_cme["movimentacoes_estoque_cme"]
+    cme__kits_modelo["kits_modelo"]
+    cme__kit_modelo_itens["kit_modelo_itens"]
+    cme__kits_instancias["kits_instancias"]
+    cme__movimentacoes_kit["movimentacoes_kit"]
+    cme__recebimentos_expurgo["recebimentos_expurgo"]
+    cme__eventos_expurgo["eventos_expurgo"]
+    cme__equipamentos_esterilizacao["equipamentos_esterilizacao"]
+    cme__ciclos_esterilizacao["ciclos_esterilizacao"]
+    cme__cargas_esterilizacao["cargas_esterilizacao"]
+    cme__carga_kits["carga_kits"]
+  end
+  subgraph auditoria["auditoria"]
+    auditoria__eventos_auditoria["eventos_auditoria"]
+    auditoria__eventos_autenticacao["eventos_autenticacao"]
+    auditoria__anexos_documentais["anexos_documentais"]
+  end
+  cadastro__leitos -->|"unidade_id → id"| cadastro__unidades
+  cadastro__usuarios -->|"profissional_id → id"| cadastro__profissionais
+  cadastro__perfil_permissao -->|"perfil_id → id"| cadastro__perfis
+  cadastro__perfil_permissao -->|"permissao_id → id"| cadastro__permissoes
+  cadastro__usuario_perfil -->|"usuario_id → id"| cadastro__usuarios
+  cadastro__usuario_perfil -->|"perfil_id → id"| cadastro__perfis
+  cadastro__usuario_perfil -->|"unidade_id → id"| cadastro__unidades
+  cadastro__usuario_perfil -->|"concedido_por → id"| cadastro__usuarios
+  cadastro__sessoes_usuario -->|"usuario_id → id"| cadastro__usuarios
+  cadastro__recuperacoes_acesso -->|"usuario_id → id"| cadastro__usuarios
+  cadastro__fatores_mfa -->|"usuario_id → id"| cadastro__usuarios
+  cadastro__turmas -->|"professor_id → id"| cadastro__usuarios
+  cadastro__turma_alunos -->|"turma_id → id"| cadastro__turmas
+  cadastro__turma_alunos -->|"aluno_id → id"| cadastro__usuarios
+  cadastro__grupos_trabalho -->|"turma_id → id"| cadastro__turmas
+  cadastro__grupos_trabalho -->|"criado_por → id"| cadastro__usuarios
+  cadastro__grupo_membros -->|"grupo_id → id"| cadastro__grupos_trabalho
+  cadastro__grupo_membros -->|"aluno_id → id"| cadastro__usuarios
+  cadastro__atendimentos -->|"paciente_id → id"| cadastro__pacientes
+  cadastro__atendimentos -->|"turma_id → id"| cadastro__turmas
+  cadastro__atendimentos -->|"unidade_id → id"| cadastro__unidades
+  cadastro__atendimentos -->|"contexto_atual_id → id"| assistencial__contextos_assistenciais
+  cadastro__atendimentos -->|"atendimento_origem_id → id"| cadastro__atendimentos
+  cadastro__atendimentos -->|"criado_por_usuario_id → id"| cadastro__usuarios
+  cadastro__ocupacoes_leito -->|"atendimento_id → id"| cadastro__atendimentos
+  cadastro__ocupacoes_leito -->|"leito_id → id"| cadastro__leitos
+  cadastro__alocacoes_pacientes -->|"aluno_id → id"| cadastro__usuarios
+  cadastro__alocacoes_pacientes -->|"grupo_id → id"| cadastro__grupos_trabalho
+  cadastro__alocacoes_pacientes -->|"concedido_por → id"| cadastro__usuarios
+  cadastro__alocacoes_pacientes -->|"atendimento_id,paciente_id → id,paciente_id"| cadastro__atendimentos
+  assistencial__medicamento_contextos -->|"medicamento_id → id"| assistencial__medicamentos
+  assistencial__medicamento_contextos -->|"contexto_id → id"| assistencial__contextos_assistenciais
+  assistencial__agendamentos -->|"paciente_id → id"| cadastro__pacientes
+  assistencial__agendamentos -->|"professor_responsavel_id → id"| cadastro__usuarios
+  assistencial__agendamentos -->|"unidade_id → id"| cadastro__unidades
+  assistencial__agendamentos -->|"atendimento_id → id"| cadastro__atendimentos
+  assistencial__historico_contextos_atendimento -->|"atendimento_id → id"| cadastro__atendimentos
+  assistencial__historico_contextos_atendimento -->|"contexto_id → id"| assistencial__contextos_assistenciais
+  assistencial__historico_contextos_atendimento -->|"unidade_id → id"| cadastro__unidades
+  assistencial__historico_contextos_atendimento -->|"responsavel_usuario_id → id"| cadastro__usuarios
+  assistencial__prescricoes -->|"atendimento_id → id"| cadastro__atendimentos
+  assistencial__prescricoes -->|"contexto_id → id"| assistencial__contextos_assistenciais
+  assistencial__prescricoes -->|"autor_usuario_id → id"| cadastro__usuarios
+  assistencial__prescricao_itens -->|"prescricao_id → id"| assistencial__prescricoes
+  assistencial__prescricao_itens -->|"medicamento_contexto_id → id"| assistencial__medicamento_contextos
+  assistencial__aprazamentos -->|"item_id → id"| assistencial__prescricao_itens
+  assistencial__aprazamentos -->|"origem_id → id"| assistencial__aprazamentos
+  assistencial__checagens_mar -->|"aprazamento_id → id"| assistencial__aprazamentos
+  assistencial__checagens_mar -->|"prescricao_item_id → id"| assistencial__prescricao_itens
+  assistencial__checagens_mar -->|"usuario_executor_id → id"| cadastro__usuarios
+  assistencial__checagens_mar -->|"retifica_id → id"| assistencial__checagens_mar
+  assistencial__administracoes_medicamentos -->|"atendimento_id → id"| cadastro__atendimentos
+  assistencial__administracoes_medicamentos -->|"prescricao_item_id → id"| assistencial__prescricao_itens
+  assistencial__administracoes_medicamentos -->|"aprazamento_id → id"| assistencial__aprazamentos
+  assistencial__administracoes_medicamentos -->|"checagem_id → id"| assistencial__checagens_mar
+  assistencial__administracoes_medicamentos -->|"contexto_id → id"| assistencial__contextos_assistenciais
+  assistencial__administracoes_medicamentos -->|"usuario_executor_id → id"| cadastro__usuarios
+  assistencial__administracoes_medicamentos -->|"retifica_administracao_id → id"| assistencial__administracoes_medicamentos
+  assistencial__historico_prescricao -->|"prescricao_id → id"| assistencial__prescricoes
+  assistencial__historico_prescricao -->|"item_id → id"| assistencial__prescricao_itens
+  assistencial__historico_prescricao -->|"usuario_id → id"| cadastro__usuarios
+  clinico__anotacoes -->|"atendimento_id → id"| cadastro__atendimentos
+  clinico__anotacoes -->|"autor_usuario_id → id"| cadastro__usuarios
+  clinico__anotacoes -->|"retifica_id → id"| clinico__anotacoes
+  clinico__sinais_vitais -->|"atendimento_id → id"| cadastro__atendimentos
+  clinico__sinais_vitais -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  clinico__avaliacoes_escalas -->|"atendimento_id → id"| cadastro__atendimentos
+  clinico__avaliacoes_escalas -->|"escala_id → id"| clinico__catalogo_escalas
+  clinico__avaliacoes_escalas -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  clinico__respostas_escalas -->|"avaliacao_id → id"| clinico__avaliacoes_escalas
+  clinico__protocolos_sepse -->|"atendimento_id → id"| cadastro__atendimentos
+  clinico__protocolos_sepse -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  clinico__sepse_bundles -->|"protocolo_id → id"| clinico__protocolos_sepse
+  clinico__sepse_bundles -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  clinico__dispositivos_paciente -->|"atendimento_id → id"| cadastro__atendimentos
+  clinico__dispositivos_paciente -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  clinico__movimentos_hidricos -->|"atendimento_id → id"| cadastro__atendimentos
+  clinico__movimentos_hidricos -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  clinico__movimentos_hidricos -->|"retifica_id → id"| clinico__movimentos_hidricos
+  cirurgia_maternidade__procedimentos_cirurgicos -->|"atendimento_id → id"| cadastro__atendimentos
+  cirurgia_maternidade__procedimentos_cirurgicos -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cirurgia_maternidade__itens_checklist -->|"modelo_id → id"| cirurgia_maternidade__modelos_checklist
+  cirurgia_maternidade__partos -->|"atendimento_mae_id → id"| cadastro__atendimentos
+  cirurgia_maternidade__partos -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cirurgia_maternidade__execucoes_checklist -->|"modelo_id → id"| cirurgia_maternidade__modelos_checklist
+  cirurgia_maternidade__execucoes_checklist -->|"atendimento_id → id"| cadastro__atendimentos
+  cirurgia_maternidade__execucoes_checklist -->|"cirurgia_id → id"| cirurgia_maternidade__procedimentos_cirurgicos
+  cirurgia_maternidade__execucoes_checklist -->|"parto_id → id"| cirurgia_maternidade__partos
+  cirurgia_maternidade__execucoes_checklist -->|"responsavel_usuario_id → id"| cadastro__usuarios
+  cirurgia_maternidade__respostas_checklist -->|"execucao_id → id"| cirurgia_maternidade__execucoes_checklist
+  cirurgia_maternidade__respostas_checklist -->|"item_id → id"| cirurgia_maternidade__itens_checklist
+  cirurgia_maternidade__respostas_checklist -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cirurgia_maternidade__recem_nascidos -->|"parto_id → id"| cirurgia_maternidade__partos
+  cirurgia_maternidade__recem_nascidos -->|"paciente_id → id"| cadastro__pacientes
+  cirurgia_maternidade__avaliacoes_apgar -->|"rn_id → id"| cirurgia_maternidade__recem_nascidos
+  cirurgia_maternidade__avaliacoes_apgar -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cirurgia_maternidade__avaliacoes_capurro -->|"rn_id → id"| cirurgia_maternidade__recem_nascidos
+  cirurgia_maternidade__avaliacoes_capurro -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cirurgia_maternidade__triagens_neonatais -->|"rn_id → id"| cirurgia_maternidade__recem_nascidos
+  cirurgia_maternidade__triagens_neonatais -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cme__movimentacoes_estoque_cme -->|"material_id → id"| cme__materiais_cme
+  cme__movimentacoes_estoque_cme -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cme__kit_modelo_itens -->|"kit_modelo_id → id"| cme__kits_modelo
+  cme__kit_modelo_itens -->|"material_id → id"| cme__materiais_cme
+  cme__kits_instancias -->|"kit_modelo_id → id"| cme__kits_modelo
+  cme__movimentacoes_kit -->|"kit_instancia_id → id"| cme__kits_instancias
+  cme__movimentacoes_kit -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cme__recebimentos_expurgo -->|"kit_instancia_id → id"| cme__kits_instancias
+  cme__recebimentos_expurgo -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cme__eventos_expurgo -->|"recebimento_id → id"| cme__recebimentos_expurgo
+  cme__eventos_expurgo -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cme__ciclos_esterilizacao -->|"equipamento_id → id"| cme__equipamentos_esterilizacao
+  cme__ciclos_esterilizacao -->|"registrado_por_usuario_id → id"| cadastro__usuarios
+  cme__cargas_esterilizacao -->|"ciclo_id → id"| cme__ciclos_esterilizacao
+  cme__carga_kits -->|"carga_id → id"| cme__cargas_esterilizacao
+  cme__carga_kits -->|"kit_instancia_id → id"| cme__kits_instancias
+  auditoria__eventos_auditoria -->|"usuario_id → id"| cadastro__usuarios
+  auditoria__eventos_autenticacao -->|"usuario_id → id"| cadastro__usuarios
+  auditoria__eventos_autenticacao -->|"sessao_id → id"| cadastro__sessoes_usuario
+  auditoria__anexos_documentais -->|"atendimento_id → id"| cadastro__atendimentos
+  auditoria__anexos_documentais -->|"criado_por → id"| cadastro__usuarios
