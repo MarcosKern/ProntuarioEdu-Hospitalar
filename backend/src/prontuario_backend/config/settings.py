@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     oidc_jwks_url: str = ""
     oidc_authorization_url: str = ""
     oidc_token_url: str = ""
+    oidc_scope_claim: Literal["scope", "scp"] = "scope"
+    oidc_refresh_window_seconds: int = Field(default=60, ge=0, le=3600)
     swagger_client_id: str = ""
 
     @model_validator(mode="after")

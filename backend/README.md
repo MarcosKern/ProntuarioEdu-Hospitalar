@@ -116,6 +116,8 @@ O arquivo [`config/swagger.py`](src/prontuario_backend/config/swagger.py) centra
 
 O Swagger usa a mesma origem do navegador para chamar a API. Assim, no Codespace, as requisições continuam no endereço HTTPS encaminhado pelo GitHub. Autorizações não são persistidas pelo Swagger no armazenamento do navegador. Em produção, a interface, o contrato e o retorno OAuth2 ficam desabilitados.
 
+O botão **Authorize** solicita o token ao provedor com Authorization Code + PKCE S256. O client ID público é preenchido por `SWAGGER_CLIENT_ID`, e `identity:read` já vem pré-selecionado. A troca do código usa `POST` em `OIDC_TOKEN_URL`; após a autorização, o Swagger envia o access token como Bearer nas operações protegidas. Veja o [passo a passo da chamada de token](AUTHENTICATION.md#solicitar-o-token-pelo-swagger).
+
 ### Usar o Swagger em desenvolvimento
 
 1. Configure o ambiente com `APP_ENV=development` e inicie o Back-end pelo [roteiro do Codespace](#rodar-o-contêiner-de-desenvolvimento-e-acessar-a-api) ou pelos modos locais deste README. A execução atual da API exige MySQL de desenvolvimento autorizado; a configuração do Swagger não importa o banco ou a arquitetura enviados.
@@ -123,7 +125,7 @@ O Swagger usa a mesma origem do navegador para chamar a API. Assim, no Codespace
 3. Expanda uma operação para consultar descrição, parâmetros, schema e códigos de resposta. Clique em **Try it out** e depois em **Execute** para realizar uma chamada real. A rota `/health` consulta o banco; ela não exige token.
 4. Para operações protegidas, configure o provedor real conforme a próxima seção e use **Authorize**. O login na porta privada do GitHub permite acessar o Codespace, mas não autentica o usuário da API.
 
-Não há novo endpoint clínico, conta padrão ou geração de tokens de demonstração. Sem autenticação, `/api/v1/me` continua respondendo HTTP 401.
+Não há novo endpoint clínico, conta padrão ou geração de tokens de demonstração. Sem autenticação, `/api/v1/me` e `/api/v1/auth/session` respondem HTTP 401. O [guia de autenticação e validade do acesso](AUTHENTICATION.md) descreve a função executada antes dos endpoints, os escopos e o fluxo de renovação no provedor.
 
 ### Preparar o botão Authorize com OAuth2 e PKCE
 
@@ -136,7 +138,8 @@ Para preparar o cliente do Swagger no provedor:
 3. Se o provedor exigir uma lista de origens permitidas para a troca do código, inclua a origem do Swagger na configuração do provedor. A troca de tokens ocorre pelo navegador. Não é preciso liberar CORS da API para o Swagger que usa sua própria origem.
 4. Copie o **client ID público** para `SWAGGER_CLIENT_ID` no `.env` do Back-end. O campo está previsto em [`.env.example`](.env.example) e pode ficar vazio enquanto o login não for configurado. O client ID não é necessariamente igual ao `OIDC_AUDIENCE`, que identifica a audiência aceita pela API.
 5. Reinicie a execução Python ou recrie o serviço Compose para carregar as variáveis. No Compose, use `docker compose up -d --force-recreate --wait`, com os dois arquivos `-f` se estiver usando o override TLS.
-6. Reabra `/docs`, clique em **Authorize** e conclua o login no provedor real. Depois, execute `GET /api/v1/me` para verificar a identidade autenticada. O provedor precisa emitir um access token compatível com a validação existente: JWT RS256, issuer e audience configurados, além de `exp` e `sub`.
+6. Cadastre e conceda no provedor o escopo `identity:read`, incluindo-o no claim `scope` do access token. Se o provedor usa `scp`, configure `OIDC_SCOPE_CLAIM=scp`.
+7. Reabra `/docs`, clique em **Authorize**, selecione `identity:read` e conclua o login no provedor real. Depois, execute `GET /api/v1/me` para verificar a identidade autenticada, ou `GET /api/v1/auth/session` para consultar a expiração e a recomendação de renovação. O provedor precisa emitir um access token JWT RS256, com `kid`, issuer e audience configurados, além de `exp`, `sub` e o escopo exigido. O login e a renovação reais dependem desse provedor.
 
 Não coloque client secret em `.env` para o Swagger, no JSON da documentação ou no navegador. A pré-configuração não registra o cliente automaticamente no provedor. Se o hostname do Codespace mudar, atualize a redirect URI no provedor e `ALLOWED_HOSTS` no Back-end.
 
@@ -145,8 +148,12 @@ Não coloque client secret em `.env` para o Swagger, no JSON da documentação o
 O exemplo abaixo é um recorte da rota **já implementada** em [`routes/api.py`](src/prontuario_backend/routes/api.py). Ele mostra como documentar `GET /api/v1/me`; não precisa ser copiado para criar uma segunda rota.
 
 ```python
-class IdentityResponse(BaseModel):
-    subject: str
+from typing import Annotated
+
+from fastapi import Security
+
+from prontuario_backend.config.auth import AuthenticatedUser, authenticate_request
+from prontuario_backend.views.auth import IdentityResponse
 
 
 @router.get(
@@ -155,17 +162,17 @@ class IdentityResponse(BaseModel):
     tags=["Autenticação"],
     summary="Consultar a identidade autenticada",
     operation_id="get_current_identity",
-    description="Valida o token do provedor OIDC e retorna seu subject. Exige autenticação Bearer.",
+    description="Valida o access token OIDC e retorna seu subject. Exige Bearer e o escopo identity:read.",
     responses={
         status: ERROR_RESPONSES[status]
-        for status in (401, 405, 413, 429, 500, 503)
+        for status in (401, 403, 405, 413, 429, 500, 503)
     },
 )
-def identity(user=Depends(current_user)):
-    return IdentityResponse(subject=user["sub"])
+def identity(user: Annotated[AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])]):
+    return IdentityResponse(subject=user.subject)
 ```
 
-Nesse arquivo, `BaseModel` vem de Pydantic, `Depends` vem de FastAPI, `router` é uma instância de `APIRouter`, `current_user` é a dependência de autenticação existente e `ERROR_RESPONSES` vem de `views/errors.py`.
+Nesse arquivo, `router` é uma instância de `APIRouter` e `ERROR_RESPONSES` vem de `views/errors.py`. A dependência `authenticate_request` executa antes do corpo do endpoint e entrega somente uma identidade já validada.
 
 | Configuração | Efeito no Swagger e na API |
 | --- | --- |
@@ -175,7 +182,7 @@ Nesse arquivo, `BaseModel` vem de Pydantic, `Depends` vem de FastAPI, `router` �
 | `summary` e `description` | Explicam o objetivo e os requisitos da chamada |
 | `operation_id` | Identifica a operação no OpenAPI; deve ser único e estável para os clientes |
 | `responses` | Documenta os erros com o schema compartilhado; não implementa seu tratamento |
-| `Depends(current_user)` | Exige identidade válida e faz o esquema OAuth2 aparecer nessa operação |
+| `Security(authenticate_request, scopes=["identity:read"])` | Valida o token antes do endpoint, exige o escopo e o documenta no OpenAPI |
 
 Ao alterar um endpoint real, mantenha a implementação e esses metadados coerentes. Para entrada de dados futura, declare um Model Pydantic adequado ao contrato aprovado: o FastAPI incluirá seus campos no OpenAPI. Documentar um erro ou uma regra não substitui implementá-los e testá-los.
 

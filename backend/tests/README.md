@@ -45,6 +45,7 @@ Sem MYSQL_TEST_URL, testes dependentes de banco são **pulados**, não aprovados
 | Arquivo/pasta | Verificação |
 | --- | --- |
 | `integration/test_development.py` | Saúde com SQL, Swagger/OpenAPI e tokens assinados em teste |
+| `integration/test_authentication.py` | Validação antes do endpoint, claims e assinatura JWT, escopos, JWKS, expiração e recomendação de renovação |
 | `integration/test_security.py` | Configuração, limites, headers, CORS, migrações e autorização/auditoria |
 | `integration/test_mysql.py` | Migrações MySQL e proteção de auditoria contra exclusão |
 | `unit/` | Reservado para testes unitários adicionais |

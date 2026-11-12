@@ -29,7 +29,8 @@ def isolated_settings(monkeypatch):
     monkeypatch.setenv("APP_ENV", "test")
     monkeypatch.setenv("DATABASE_URL", url or "mysql+pymysql://unused@127.0.0.1/prontuario_test")
     monkeypatch.delenv("REDIS_URL", raising=False)
-    for name in ("OIDC_ISSUER", "OIDC_AUDIENCE", "OIDC_JWKS_URL", "OIDC_AUTHORIZATION_URL", "OIDC_TOKEN_URL"):
+    for name in ("OIDC_ISSUER", "OIDC_AUDIENCE", "OIDC_JWKS_URL", "OIDC_AUTHORIZATION_URL", "OIDC_TOKEN_URL",
+                 "OIDC_SCOPE_CLAIM", "OIDC_REFRESH_WINDOW_SECONDS"):
         monkeypatch.delenv(name, raising=False)
     get_settings.cache_clear()
     engine_for.cache_clear()

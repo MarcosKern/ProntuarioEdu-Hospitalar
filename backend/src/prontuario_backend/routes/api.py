@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from typing import Annotated
 
-from prontuario_backend.config.auth import current_user
+from fastapi import APIRouter, Security
+
+from prontuario_backend.config.auth import AuthenticatedUser, authenticate_request
+from prontuario_backend.controllers.auth import session_status
 from prontuario_backend.controllers.health import health
+from prontuario_backend.views.auth import IdentityResponse, SessionResponse
 from prontuario_backend.views.errors import ERROR_RESPONSES
 from prontuario_backend.views.health import HealthResponse
 
@@ -13,13 +16,19 @@ router.add_api_route("/health", health, methods=["GET"], response_model=HealthRe
                      responses={status: ERROR_RESPONSES[status] for status in (405, 413, 500, 503)})
 
 
-class IdentityResponse(BaseModel):
-    subject: str
-
-
 @router.get("/api/v1/me", response_model=IdentityResponse, tags=["Autenticação"],
             summary="Consultar a identidade autenticada", operation_id="get_current_identity",
-            description="Valida o token do provedor OIDC e retorna seu subject. Exige autenticação Bearer.",
-            responses={status: ERROR_RESPONSES[status] for status in (401, 405, 413, 429, 500, 503)})
-def identity(user=Depends(current_user)):  # noqa: B008 - FastAPI dependency injection
-    return IdentityResponse(subject=user["sub"])
+            description="Valida o access token OIDC e retorna seu subject. Exige Bearer e o escopo identity:read.",
+            responses={status: ERROR_RESPONSES[status] for status in (401, 403, 405, 413, 429, 500, 503)})
+def identity(user: Annotated[AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])]):
+    return IdentityResponse(subject=user.subject)
+
+
+@router.get("/api/v1/auth/session", response_model=SessionResponse, tags=["Autenticação"],
+            summary="Consultar a validade do acesso e a necessidade de renovação", operation_id="get_session_status",
+            description=("Valida o access token antes de executar a consulta. Exige o escopo identity:read. "
+                         "refresh_required indica proximidade da expiração; a renovação é feita no provedor OAuth2. "
+                         "Esta consulta não verifica logout ou revogação no provedor."),
+            responses={status: ERROR_RESPONSES[status] for status in (401, 403, 405, 413, 429, 500, 503)})
+def validate_session(user: Annotated[AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])]):
+    return session_status(user)

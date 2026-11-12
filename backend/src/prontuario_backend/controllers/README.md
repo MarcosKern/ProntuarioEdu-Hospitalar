@@ -13,3 +13,5 @@ Verificar a identidade autenticada e a autorização sobre o registro, validar o
 Cobrir a responsabilidade com testes: regras isoladas em `backend/tests/unit/`, comportamento HTTP e persistência em `backend/tests/integration/` e compatibilidade da API em `backend/tests/contract/`. Usar dados sintéticos.
 
 O ambiente inicial usa FastAPI e SQLAlchemy/MySQL externo. Os arquivos Python desta pasta participam da API de desenvolvimento; funcionalidades clínicas ainda não foram implementadas.
+
+`auth.py::session_status` recebe uma identidade já autenticada, calcula o tempo restante do access token e seleciona a resposta de validade da sessão. A autenticação da requisição acontece antes, em `config/auth.py`; a renovação de tokens pertence ao provedor OAuth2/OIDC externo.

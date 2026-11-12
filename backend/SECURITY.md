@@ -10,7 +10,11 @@ Siga [MySQL externo](MYSQL.md) para configurar DATABASE_URL, CA, migrações e t
 
 O servidor ignora headers de proxy por padrão. Não confie livremente em X-Forwarded-For. Na implantação, limite acesso direto à API, configure proxies confiáveis e TLS no gateway; dimensione limites por usuário/origem conforme tráfego real, sobretudo quando vários usuários compartilham IP. Configure também timeout de leitura e limites no gateway.
 
-Em produção a validação exige MySQL com CA confiável configurada, Redis via `rediss://` e todos os endereços/identificadores OIDC. Certificado e hostname do Redis são verificados; uma CA privada pode ser definida em REDIS_SSL_CA. O mecanismo atual aceita tokens RS256 e verifica assinatura, issuer, audience, expiração e subject. Revogação imediata e logout global dependem do provedor e da estratégia acordada; JWT já emitido pode permanecer válido até expirar. Use duração curta e estratégia de revogação/introspecção se exigida pelo negócio. Não há provedor implantado automaticamente.
+Em produção a validação exige MySQL com CA confiável configurada, Redis via `rediss://` e todos os endereços/identificadores OIDC. Certificado e hostname do Redis são verificados; uma CA privada pode ser definida em REDIS_SSL_CA. `authenticate_request` executa antes dos endpoints protegidos: aceita access tokens RS256 com `kid`, verifica assinatura, issuer, audience, expiração e subject, e exige todos os escopos declarados em `Security`. `/api/v1/me` e `/api/v1/auth/session` exigem `identity:read`; permissões não são obtidas de papéis ou campos enviados pelo cliente.
+
+`GET /api/v1/auth/session` informa a validade do access token e recomenda renovação quando restam até `OIDC_REFRESH_WINDOW_SECONDS` (60 por padrão). Token expirado recebe 401, escopo insuficiente recebe 403 e indisponibilidade do provedor recebe 503. O aplicativo renova tokens no provedor externo; a API não recebe refresh tokens nem emite credenciais. Consulte [autenticação](AUTHENTICATION.md) para configuração, contratos e uso da dependência.
+
+Revogação imediata e logout global dependem do provedor e da estratégia acordada; JWT já emitido pode permanecer válido até expirar. A consulta de validade não comprova sessão ativa no provedor e não faz introspecção online. Use duração curta e estratégia de revogação/introspecção se exigida pelo negócio. Não há provedor implantado automaticamente.
 
 ## Permissões e auditoria
 

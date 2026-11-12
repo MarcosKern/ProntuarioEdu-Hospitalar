@@ -47,10 +47,10 @@ def test_signed_token_and_rejections(monkeypatch):
         get_signing_key_from_jwt=lambda token: SimpleNamespace(key=private_key.public_key())
     ))
     claims = {"iss": "https://issuer.example.test", "aud": "prontuario-test",
-              "sub": "synthetic-user", "exp": datetime.now(UTC) + timedelta(minutes=5)}
+              "sub": "synthetic-user", "exp": datetime.now(UTC) + timedelta(minutes=5), "scope": "identity:read"}
 
     def request(payload):
-        token = jwt.encode(payload, private_key, algorithm="RS256")
+        token = jwt.encode(payload, private_key, algorithm="RS256", headers={"kid": "test-key"})
         return client.get("/api/v1/me", headers={"Authorization": f"Bearer {token}"})
 
     assert request(claims).json() == {"subject": "synthetic-user"}

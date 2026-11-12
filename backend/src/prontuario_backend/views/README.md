@@ -13,3 +13,5 @@ Em uma API, View é a representação dos dados, não uma tela HTML. Selecionar 
 Cobrir a responsabilidade com testes: regras isoladas em `backend/tests/unit/`, comportamento HTTP e persistência em `backend/tests/integration/` e compatibilidade da API em `backend/tests/contract/`. Usar dados sintéticos.
 
 O ambiente inicial usa FastAPI e SQLAlchemy/MySQL externo. Os arquivos Python desta pasta participam da API de desenvolvimento; funcionalidades clínicas ainda não foram implementadas.
+
+`auth.py` define `IdentityResponse` e `SessionResponse`: identidade pública, expiração e indicação de renovação. As respostas não incluem tokens, refresh tokens ou outros claims privados do provedor.
