@@ -2,6 +2,8 @@
 
 ## Responsabilidade
 
+`admin.py::require_system_admin` exige identidade e escopos verificados e confirma o usuário/perfil/permissão no banco da aplicação antes de autorizar uma operação administrativa.
+
 Recebem a chamada encaminhada pelas rotas e coordenam a operação.
 
 ## Como dividir o trabalho
@@ -13,3 +15,5 @@ Verificar a identidade autenticada e a autorização sobre o registro, validar o
 Cobrir a responsabilidade com testes: regras isoladas em `backend/tests/unit/`, comportamento HTTP e persistência em `backend/tests/integration/` e compatibilidade da API em `backend/tests/contract/`. Usar dados sintéticos.
 
 O ambiente inicial usa FastAPI e SQLAlchemy/MySQL externo. Os arquivos Python desta pasta participam da API de desenvolvimento; funcionalidades clínicas ainda não foram implementadas.
+
+`auth.py::session_status` recebe uma identidade já autenticada, calcula o tempo restante do access token e seleciona a resposta de validade da sessão. A autenticação da requisição acontece antes, em `config/auth.py`; `auth.py` também coordena login, renovação com rotação, logout e troca de senha usando os Models.

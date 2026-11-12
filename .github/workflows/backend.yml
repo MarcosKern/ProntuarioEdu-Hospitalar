@@ -59,6 +59,7 @@ jobs:
         # Official Trivy 0.65.0 image, pinned to the verified registry digest.
         # No runner-side download/install script is required.
         run: |
+          echo "Analisando imagem: prontuario-backend:ci"
           docker run --rm \
             --volume /var/run/docker.sock:/var/run/docker.sock:ro \
             aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \

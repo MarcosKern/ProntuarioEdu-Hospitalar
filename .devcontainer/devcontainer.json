@@ -18,9 +18,14 @@
   "remoteEnv": {
     "PATH": "${containerWorkspaceFolder}/backend/.venv/bin:${containerEnv:PATH}"
   },
-  "postCreateCommand": ["python3", ".devcontainer/setup.py"],
+  "postCreateCommand": [
+    "python3",
+    ".devcontainer/setup.py"
+  ],
   "waitFor": "postCreateCommand",
-  "forwardPorts": [8000],
+  "forwardPorts": [
+    8000
+  ],
   "portsAttributes": {
     "8000": {
       "label": "ProntuarioEdu API / Swagger",
@@ -43,7 +48,9 @@
         "python.testing.pytestEnabled": true,
         "python.testing.unittestEnabled": false,
         "python.testing.cwd": "${workspaceFolder}/backend",
-        "python.testing.pytestArgs": ["tests"],
+        "python.testing.pytestArgs": [
+          "tests"
+        ],
         "python.terminal.activateEnvironment": true,
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff",

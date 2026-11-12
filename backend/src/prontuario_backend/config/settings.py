@@ -24,12 +24,12 @@ class Settings(BaseSettings):
     cors_origins: list[str] = []
     max_body_bytes: int = 1048576
     rate_limit: int = 120
-    oidc_issuer: str = ""
-    oidc_audience: str = ""
-    oidc_jwks_url: str = ""
-    oidc_authorization_url: str = ""
-    oidc_token_url: str = ""
-    swagger_client_id: str = ""
+    auth_jwt_secret: SecretStr | None = None
+    auth_jwt_issuer: str = "prontuarioedu"
+    auth_jwt_audience: str = "prontuario-api"
+    auth_access_token_minutes: int = Field(default=15, ge=1, le=60)
+    auth_refresh_token_days: int = Field(default=7, ge=1, le=30)
+    auth_refresh_window_seconds: int = Field(default=60, ge=0, le=3600)
 
     @model_validator(mode="after")
     def validate_environment(self):
@@ -37,9 +37,10 @@ class Settings(BaseSettings):
             raise ValueError("Limits must be positive")
         if not self.allowed_hosts or "*" in self.allowed_hosts or "*" in self.cors_origins:
             raise ValueError("Explicit hosts and origins required")
-        for url in (self.oidc_issuer, self.oidc_jwks_url, self.oidc_authorization_url, self.oidc_token_url):
-            if url and (urlsplit(url).scheme != "https" or not urlsplit(url).hostname):
-                raise ValueError("OIDC requires HTTPS")
+        if self.auth_jwt_secret and len(self.auth_jwt_secret.get_secret_value().encode()) < 32:
+            raise ValueError("JWT signing secret requires at least 32 bytes")
+        if not self.auth_jwt_issuer or not self.auth_jwt_audience:
+            raise ValueError("JWT issuer and audience are required")
         if not self.database_url.get_secret_value().startswith("mysql+pymysql://"):
             raise ValueError("MySQL with PyMySQL is required")
         db_query = parse_qs(urlsplit(self.database_url.get_secret_value()).query)
@@ -60,8 +61,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production MySQL requires a trusted CA")
             if self.redis_url and urlsplit(self.redis_url.get_secret_value()).scheme != "rediss":
                 raise ValueError("Production Redis requires TLS")
-            if not self.redis_url or not all((self.oidc_issuer, self.oidc_audience, self.oidc_jwks_url, self.oidc_authorization_url, self.oidc_token_url)):
-                raise ValueError("Production requires Redis and OIDC")
+            if not self.redis_url or not self.auth_jwt_secret:
+                raise ValueError("Production requires Redis and a JWT signing secret")
             if any(not origin.startswith("https://") for origin in self.cors_origins):
                 raise ValueError("Production origins require HTTPS")
         return self

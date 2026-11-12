@@ -15,7 +15,7 @@ ERROR_RESPONSES = {
     status: {"model": ErrorResponse, "description": description}
     for status, description in {
         400: "Requisição inválida", 401: "Credencial ausente ou inválida", 403: "Acesso negado",
-        404: "Recurso não encontrado", 405: "Método não permitido", 413: "Corpo acima do limite",
+        404: "Recurso não encontrado", 405: "Método não permitido", 413: "Corpo acima do limite", 415: "Tipo de conteúdo não suportado",
         422: "Entrada inválida", 429: "Limite de requisições excedido", 500: "Erro interno",
         503: "Dependência indisponível ou não configurada",
     }.items()

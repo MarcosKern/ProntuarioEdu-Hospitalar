@@ -2,7 +2,7 @@
 
 ## Iniciar o ambiente
 
-Siga [MySQL externo](MYSQL.md) para configurar DATABASE_URL, CA, migrações e testes. Compose não inicia servidor de banco. O provedor OIDC continua externo e precisa ser configurado.
+Siga [MySQL externo](MYSQL.md) para configurar DATABASE_URL, CA, migrações e testes. O Compose base usa banco externo; o modo opt-in pode iniciar MySQL local. O login é feito na própria API, conforme [autenticação](AUTHENTICATION.md).
 
 ## Configuração
 
@@ -10,9 +10,16 @@ Siga [MySQL externo](MYSQL.md) para configurar DATABASE_URL, CA, migrações e t
 
 O servidor ignora headers de proxy por padrão. Não confie livremente em X-Forwarded-For. Na implantação, limite acesso direto à API, configure proxies confiáveis e TLS no gateway; dimensione limites por usuário/origem conforme tráfego real, sobretudo quando vários usuários compartilham IP. Configure também timeout de leitura e limites no gateway.
 
-Em produção a validação exige MySQL com CA confiável configurada, Redis via `rediss://` e todos os endereços/identificadores OIDC. Certificado e hostname do Redis são verificados; uma CA privada pode ser definida em REDIS_SSL_CA. O mecanismo atual aceita tokens RS256 e verifica assinatura, issuer, audience, expiração e subject. Revogação imediata e logout global dependem do provedor e da estratégia acordada; JWT já emitido pode permanecer válido até expirar. Use duração curta e estratégia de revogação/introspecção se exigida pelo negócio. Não há provedor implantado automaticamente.
+Em produção a validação exige MySQL com CA confiável, Redis via `rediss://` e `AUTH_JWT_SECRET` aleatório de pelo menos 32 bytes. Certificado e hostname do Redis são verificados. `authenticate_request` aceita somente JWT HS256 com assinatura, emissor, audiência, expiração, IDs e escopos válidos. Consulta a sessão e o usuário no MySQL em cada requisição, falhando com 503 se a dependência estiver indisponível.
+
+Senhas têm hash scrypt com salt aleatório (N=32768, r=8, p=3), sem arquivo de senha inicial. Refresh tokens aleatórios são persistidos somente como hash SHA-256 e rotacionados; o anterior deixa de funcionar. Cinco tentativas de senha incorreta bloqueiam a conta por 15 minutos. Logout revoga a sessão e troca de senha revoga todas, bloqueando access tokens já emitidos. O limitador HTTP também se aplica ao login.
+
+`GET /api/v1/auth/session` informa expiração e recomenda renovação com `AUTH_REFRESH_WINDOW_SECONDS`. Token/sessão inválida recebe 401; escopo insuficiente, 403; configuração/banco indisponível, 503. Os clientes renovam pelo endpoint local e não devem gravar tokens em logs, URLs ou Git. Recuperação de senha, MFA e armazenamento seguro nos futuros clientes ainda exigem implementação própria.
 
 ## Permissões e auditoria
+
+O [primeiro administrador](ADMINISTRADOR.md) é criado por prompt explícito em `cadastro__usuarios`, com senha em hash, perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`. `controllers/admin.py` verifica o cadastro e a concessão ativa após validar token e sessão. Contas externas só são convertidas explicitamente, mantendo ID e concessões; revogações não são restauradas. A conta não recebe bypass de prontuários. Configuração JWT/conexão fica em variáveis privadas ou gerenciador de segredos; não há realm, certificado próprio de identidade ou cofre adicional.
+
 
 `controllers/permissions.py::require_record_access` exige concessão explícita em `record_permissions`, sem bypass administrativo implícito. Use identidade validada pelo servidor, nunca campos do corpo da requisição. Falha de banco/auditoria bloqueia a operação. Nenhum endpoint clínico foi criado enquanto a regra de perfis não for informada.
 
@@ -34,17 +41,22 @@ Use os procedimentos de [backup MySQL remoto](MYSQL.md#backup-remoto-e-recupera�
 
 ## Verificação automática
 
-CI em `.github/workflows/backend.yml` executa Ruff, pytest com MySQL isolado, pip-audit e Trivy (imagem e segredos). Não usa pull_request_target nem publica imagens. Credencial fixa do serviço MySQL de CI é efêmera e exclusiva do runner; não é uma conta da aplicação. Os testes não carregam dados na aplicação.
+CI em `.github/workflows/backend.yml` executa Ruff, pytest com MySQL isolado, pip-audit e Trivy para vulnerabilidades e segredos da imagem da API. HIGH/CRITICAL reprovam o job `image`; os checks continuam `test` e `image`. O servidor de identidade e sua cadeia Java foram removidos conforme escolha do responsável; não há imagem Keycloak em uso ou no build. Não usa pull_request_target nem publica imagens. Credenciais fixas do MySQL de CI são efêmeras, exclusivas do runner. Os testes não carregam dados na aplicação.
+
 
 Local: `python -m pytest -q`, `python -m ruff check src tests scripts` e `python -m pip_audit -r requirements.txt` e `python -m pip_audit -r requirements-dev.txt`. O teste MySQL exige confirmação `MYSQL_TEST_ALLOW_RESET` igual ao nome exato do banco e `MYSQL_TEST_URL` apontando a banco descartável com nome iniciado por `prontuario_test`; sem isso é explicitamente pulado.
 
 ## Produção: requisitos ainda externos
 
-Configurar provedor OIDC e permissões reais; TLS e gateway; segredos gerenciados; usuários de banco mínimos separados; Redis privado com autenticação/TLS; métricas privadas e alertas; retenção aprovada e rotina de backup. A infraestrutura implementada não significa que o produto esteja liberado para dados clínicos reais.
+Configurar políticas de acesso e gestão/rotação da chave JWT; TLS e gateway; segredos gerenciados; usuários de banco mínimos separados; Redis privado com autenticação/TLS; métricas privadas e alertas; retenção aprovada e rotina de backup. A infraestrutura implementada não significa que o produto esteja liberado para dados clínicos reais.
 
 ## Base da imagem e correções de sistema
 
 A imagem usa Python 3.12 com Alpine 3.23, fixada por digest no Dockerfile. A escolha substitui a base Debian que apresentou vulnerabilidades HIGH em bibliotecas do sistema. Alpine usa musl em vez de glibc: novas dependências nativas precisam ser verificadas nessa plataforma. Não copiar bibliotecas binárias de imagens Debian para essa imagem.
+
+O Dockerfile fixa a base oficial Python 3.12.16/Alpine 3.23 e instala `krb5-libs=1.22.3-r0`, correção publicada no ramo Alpine `3.23-stable`. Essa etapa mantém a verificação TLS, aceita a CA opcional pelo segredo BuildKit `proxy_ca` e falha se não conseguir instalar o pacote; não libera uma imagem com a versão vulnerável por tolerância de erro.
+
+Na auditoria de 12/11/2026, o rebuild dessa correção foi bloqueado pelo proxy do ambiente com HTTP 403 no download de `APKINDEX` de `dl-cdn.alpinelinux.org`. A imagem corrigida ainda precisa ser construída e analisada em um ambiente com esse acesso autorizado; o bloqueio não é um resultado aprovado de segurança. A imagem da API anteriormente em execução apresentou 16 achados HIGH em `krb5-libs 1.22.1-r0`, sem CRITICAL ou segredos encontrados.
 
 O usuário de execução continua sem privilégios (UID 1000, preservando o usuário anterior de desenvolvimento). O MySQL permanece externo, usando PyMySQL. A mudança de distribuição não muda o contrato HTTP nem as regras MVC. Dependências continuam fixadas em requirements.txt; a CI verifica a imagem completa com a mesma política de vulnerabilidades e segredos.
 

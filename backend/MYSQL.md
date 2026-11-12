@@ -2,6 +2,8 @@
 
 Este é o guia vigente para o banco do projeto. O padrão de todo o Back-end é **MySQL 8.4 + PyMySQL**, inclusive testes de integração.
 
+Para desenvolver com MySQL em contêiner e o SQL de domínio inicializado, siga o [modo opcional de desenvolvimento](docker/mysql/README.md). As instruções abaixo tratam da conexão a servidor externo; o Compose base não inicia esse servidor.
+
 ## Preparar a conexão
 
 Solicite ao responsável pelo servidor MySQL um banco vazio dedicado, usuário, privilégios e certificado CA quando aplicável. Não instale MySQL localmente para executar a aplicação. Não envie senhas pelo chat ou pelo Git.

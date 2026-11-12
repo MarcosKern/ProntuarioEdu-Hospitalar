@@ -39,3 +39,4 @@ Thumbs.db
 backups/
 *.backup.enc
 *.fernet
+/.local/

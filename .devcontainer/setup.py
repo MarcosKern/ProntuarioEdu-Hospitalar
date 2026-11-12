@@ -26,7 +26,7 @@ def prepare(root: Path, install=True):
     subprocess.run([str(python), "-m", "pip", "install", "-r", str(backend / "requirements-dev.txt")],
                    cwd=backend, check=True)
     subprocess.run([str(python), "-m", "pip", "check"], cwd=backend, check=True)
-    print("Dependências prontas. Configure MySQL/OIDC e use a tarefa Codespaces: iniciar API.")
+    print("Dependências prontas. Configure MySQL e AUTH_JWT_SECRET e use a tarefa Codespaces: iniciar API.")
     print("Nenhum SQL foi importado e nenhuma migração foi executada.")
 
 

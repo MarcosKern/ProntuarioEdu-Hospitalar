@@ -1,5 +1,7 @@
 # Testar o Back-end
 
+Para subir o ambiente com **MySQL, Redis, API e credenciais fixas exibidas no terminal**, consulte o [Compose exclusivo de testes](../docker/mysql/TESTING.md). De `backend`, execute `python3 scripts/test_env.py`. O banco `prontuario_test` é separado do banco `prontuarioedu` da API.
+
 Execute de `backend`, com o venv já preparado e as dependências de `requirements-dev.txt` instaladas. Os comandos são os mesmos da CI:
 
 ```bash
@@ -43,11 +45,14 @@ Sem MYSQL_TEST_URL, testes dependentes de banco são **pulados**, não aprovados
 | Arquivo/pasta | Verificação |
 | --- | --- |
 | `integration/test_development.py` | Saúde com SQL, Swagger/OpenAPI e tokens assinados em teste |
+| `integration/test_authentication.py` | Validação antes do endpoint, claims e assinatura JWT, escopos, sessão no MySQL, expiração, renovação e logout |
+| `integration/test_admin.py` | Cadastro inicial da aplicação, idempotência, recusa de takeover e bloqueio por desativação/revogação |
+| `unit/test_auth_setup.py` | Estado privado persistente, renderização correta do realm e confiança TLS |
 | `integration/test_security.py` | Configuração, limites, headers, CORS, migrações e autorização/auditoria |
 | `integration/test_mysql.py` | Migrações MySQL e proteção de auditoria contra exclusão |
 | `unit/` | Reservado para testes unitários adicionais |
 | `contract/` | Reservado para cobertura completa de contratos futuros |
 
-Os testes OIDC usam chaves isoladas; não comprovam login/logout no provedor externo. Os testes existentes também não representam cobertura de funcionalidades clínicas ainda não implementadas. Consulte [MYSQL.md](../MYSQL.md#testes) e [SECURITY.md](../SECURITY.md).
+Os testes usam chave JWT isolada e MySQL descartável para login, refresh, logout, troca de senha e revogação. Não configuram contas na aplicação. Os testes existentes também não representam cobertura de funcionalidades clínicas ainda não implementadas. Consulte [MYSQL.md](../MYSQL.md#testes) e [SECURITY.md](../SECURITY.md).
 
 A suíte operacional também verifica os timeouts enviados ao driver SQL, os schemas OpenAPI das respostas de erro e a ausência de valores sensíveis em diagnósticos de falhas internas.

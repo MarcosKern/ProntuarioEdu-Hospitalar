@@ -13,3 +13,4 @@ data
 backups
 *.backup.enc
 *.fernet
+.local
