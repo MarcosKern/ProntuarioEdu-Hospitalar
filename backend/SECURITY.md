@@ -20,8 +20,6 @@ Revogação imediata e logout global dependem do provedor e da estratégia acord
 
 O [primeiro administrador](ADMINISTRADOR.md) é criado por um comando explícito de desenvolvimento em `cadastro__usuarios`, com vínculo ao `sub` Keycloak, perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`. `controllers/admin.py` verifica o cadastro ativo e a concessão após validar os escopos do token. A conta não recebe bypass de prontuários. Senha temporária, realm renderizado e chaves TLS ficam em `.local/auth`, ignorado pelo Git/build. O acesso HTTPS ao JWKS usa `OIDC_SSL_CA` quando configurada, mantendo verificação do certificado e hostname.
 
-O [primeiro administrador](ADMINISTRADOR.md) é criado por um comando explícito de desenvolvimento em `cadastro__usuarios`, com vínculo ao `sub` Keycloak, perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`. `controllers/admin.py` verifica o cadastro ativo e a concessão após validar os escopos do token. A conta não recebe bypass de prontuários. Senha temporária, realm renderizado e chaves TLS ficam em `.local/auth`, ignorado pelo Git/build. O acesso HTTPS ao JWKS usa `OIDC_SSL_CA` quando configurada, mantendo verificação do certificado e hostname.
-
 `controllers/permissions.py::require_record_access` exige concessão explícita em `record_permissions`, sem bypass administrativo implícito. Use identidade validada pelo servidor, nunca campos do corpo da requisição. Falha de banco/auditoria bloqueia a operação. Nenhum endpoint clínico foi criado enquanto a regra de perfis não for informada.
 
 A concessão tem escopo de um registro e ação read/write. Ela não substitui políticas clínicas, vínculo organizacional ou aprovação formal: essas regras precisam ser definidas antes de concessões reais. IDs não comprovam existência de prontuários. Não dê acesso direto a essa tabela a usuários finais.
@@ -42,7 +40,7 @@ Use os procedimentos de [backup MySQL remoto](MYSQL.md#backup-remoto-e-recupera�
 
 ## Verificação automática
 
-CI em `.github/workflows/backend.yml` executa Ruff, pytest com MySQL isolado, pip-audit e Trivy (imagem e segredos). Não usa pull_request_target nem publica imagens. Credencial fixa do serviço MySQL de CI é efêmera e exclusiva do runner; não é uma conta da aplicação. Os testes não carregam dados na aplicação.
+CI em `.github/workflows/backend.yml` executa Ruff, pytest com MySQL isolado, pip-audit e Trivy para vulnerabilidades e segredos nas imagens da API e do Keycloak. As duas imagens são analisadas mesmo se a primeira apresentar achados; falha em qualquer scan reprova o job `image`, mantendo o bloqueio de HIGH/CRITICAL. Os checks continuam `test` e `image`. Não usa pull_request_target nem publica imagens. Credencial fixa do serviço MySQL de CI é efêmera e exclusiva do runner; não é uma conta da aplicação. Os testes não carregam dados na aplicação.
 
 Local: `python -m pytest -q`, `python -m ruff check src tests scripts` e `python -m pip_audit -r requirements.txt` e `python -m pip_audit -r requirements-dev.txt`. O teste MySQL exige confirmação `MYSQL_TEST_ALLOW_RESET` igual ao nome exato do banco e `MYSQL_TEST_URL` apontando a banco descartável com nome iniciado por `prontuario_test`; sem isso é explicitamente pulado.
 
@@ -54,9 +52,19 @@ Configurar provedor OIDC e permissões reais; TLS e gateway; segredos gerenciado
 
 A imagem usa Python 3.12 com Alpine 3.23, fixada por digest no Dockerfile. A escolha substitui a base Debian que apresentou vulnerabilidades HIGH em bibliotecas do sistema. Alpine usa musl em vez de glibc: novas dependências nativas precisam ser verificadas nessa plataforma. Não copiar bibliotecas binárias de imagens Debian para essa imagem.
 
+O Dockerfile fixa a base oficial Python 3.12.16/Alpine 3.23 e instala `krb5-libs=1.22.3-r0`, correção publicada no ramo Alpine `3.23-stable`. Essa etapa mantém a verificação TLS, aceita a CA opcional pelo segredo BuildKit `proxy_ca` e falha se não conseguir instalar o pacote; não libera uma imagem com a versão vulnerável por tolerância de erro.
+
+Na auditoria de 12/11/2026, o rebuild dessa correção foi bloqueado pelo proxy do ambiente com HTTP 403 no download de `APKINDEX` de `dl-cdn.alpinelinux.org`. A imagem corrigida ainda precisa ser construída e analisada em um ambiente com esse acesso autorizado; o bloqueio não é um resultado aprovado de segurança. A imagem da API anteriormente em execução apresentou 16 achados HIGH em `krb5-libs 1.22.1-r0`, sem CRITICAL ou segredos encontrados.
+
 O usuário de execução continua sem privilégios (UID 1000, preservando o usuário anterior de desenvolvimento). O MySQL permanece externo, usando PyMySQL. A mudança de distribuição não muda o contrato HTTP nem as regras MVC. Dependências continuam fixadas em requirements.txt; a CI verifica a imagem completa com a mesma política de vulnerabilidades e segredos.
 
 Manter a base atualizada: consultar a imagem oficial Python 3.12/Alpine, verificar o novo digest, reconstruir, executar testes incluindo MySQL e repetir o scan completo. Um resultado limpo em HIGH/CRITICAL é uma observação daquela base de vulnerabilidades e imagem, não garantia permanente ou ausência de achados menores. Não usar ignore-unfixed, supressões globais ou remoção do scan para liberar a imagem.
+
+### Limitação atual do Keycloak
+
+Na mesma auditoria, o último patch oficial publicado do Keycloak era [26.8.2](https://github.com/keycloak/keycloak/releases/tag/26.8.2), e o digest da tag correspondia ao já fixado em `docker/keycloak/Dockerfile`. O scan completo dessa imagem encontrou 6 HIGH, 0 CRITICAL e 0 segredos: um achado em OpenJDK e quatro em `sqlite-libs` sem versão corrigida indicada pela base do Trivy, além de um em Guava 33.6.0-jre cuja correção 33.7.2 ainda não estava incorporada nessa imagem oficial.
+
+Essa imagem não está aprovada pelo critério HIGH/CRITICAL. O check `image` permanece bloqueando os achados, mesmo sem correção na última imagem upstream. Aguardar uma correção compatível e repetir build, testes e scans; não substituir JARs manualmente, trocar de distribuição apenas para mudar a detecção ou suprimir vulnerabilidades para liberar o check.
 
 ## Auditoria contínua e diagnóstico
 

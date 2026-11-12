@@ -8,7 +8,7 @@ import secrets
 import ssl
 import string
 import subprocess
-import sys
+import textwrap
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -19,11 +19,46 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from dotenv import dotenv_values, set_key
-from sqlalchemy import create_engine
-from sqlalchemy.engine import URL
-from sqlalchemy.exc import SQLAlchemyError
 
 BACKEND = Path(__file__).resolve().parents[1]
+
+
+def state_directory(path):
+    """Recusa credenciais em áreas versionáveis antes de criar qualquer arquivo."""
+    state = path.resolve()
+    backend = BACKEND.resolve()
+    repository = backend.parent
+    internal = state.is_relative_to(repository)
+    sensitive = ("compose.env", "realm.json", "admin-inicial.txt", "certs/server.key", "certs/ca.key")
+    git_env = os.environ.copy()
+    for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"):
+        git_env.pop(name, None)
+    if internal and not state.is_relative_to(backend / ".local"):
+        raise ValueError("Dentro do projeto, use backend/.local/ para o estado privado")
+    roots = {}
+    for candidate in (state, *(state / name for name in sensitive)):
+        resolved = candidate.resolve()
+        if not resolved.is_relative_to(state):
+            raise ValueError("Arquivos privados não podem apontar para fora do diretório de estado")
+        probe = resolved if resolved.is_dir() else resolved.parent
+        while not probe.is_dir():
+            probe = probe.parent
+        if probe not in roots:
+            checkout = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=probe,
+                                      env=git_env, capture_output=True, text=True, check=False)
+            roots[probe] = Path(checkout.stdout.strip()).resolve() if checkout.returncode == 0 else None
+        root = roots[probe]
+        if root is not None and (not internal or root != repository):
+            raise ValueError("Não grave o estado privado dentro de outro repositório Git")
+    if internal:
+        ignored = all(subprocess.run(["git", "check-ignore", "--quiet", "--", str(state / name)],
+                                    cwd=repository, env=git_env, capture_output=True, check=False).returncode == 0
+                      for name in sensitive)
+        tracked = subprocess.run(["git", "ls-files", "-z", "--", str(state)],
+                                 cwd=repository, env=git_env, capture_output=True, check=False)
+        if not ignored or tracked.returncode or tracked.stdout:
+            raise ValueError("O estado privado deve estar ignorado pelo Git e sem arquivos versionados")
+    return state
 
 
 def private_write(path, value):
@@ -96,6 +131,7 @@ def certificates(folder, public_host):
 
 
 def prepare(state, project, https_port, http_port, backend_port):
+    state = state_directory(state)
     target = state / "compose.env"
     if target.exists():
         values = dotenv_values(target)
@@ -105,6 +141,8 @@ def prepare(state, project, https_port, http_port, backend_port):
             raise ValueError("Estado incompleto; não gerar novas credenciais sobre um volume existente")
         if values["AUTH_NETWORK_NAME"] != project:
             raise ValueError("O estado pertence a outro projeto; use seu nome original")
+        if Path(values["AUTH_STATE_DIR"]).resolve() != state:
+            raise ValueError("O estado pertence a outro diretório; a configuração original foi preservada")
         render_realm(state, values)
         return values
     state.mkdir(parents=True, mode=0o700, exist_ok=True)
@@ -135,10 +173,20 @@ def configure_api(state, values):
     target = BACKEND / ".env"
     if not target.exists():
         private_write(target, (BACKEND / ".env.example").read_text())
-    if dotenv_values(target).get("APP_ENV") == "production":
+    config = dotenv_values(target)
+    if config.get("APP_ENV") == "production":
         raise ValueError("O bootstrap é exclusivo de desenvolvimento; .env de produção preservado")
+    configured_hosts = config.get("ALLOWED_HOSTS")
+    hosts = json.loads(configured_hosts) if configured_hosts is not None else ["localhost", "127.0.0.1"]
+    if not isinstance(hosts, list) or not hosts or any(not isinstance(host, str) or not host or host == "*" for host in hosts):
+        raise ValueError("ALLOWED_HOSTS deve conter hosts explícitos em uma lista JSON")
+    hostname = urlsplit(values["AUTH_SWAGGER_ORIGIN"]).hostname
+    if not hostname:
+        raise ValueError("Origem do Swagger inválida")
+    if hostname not in hosts:
+        hosts.append(hostname)
     realm = values["AUTH_PUBLIC_URL"] + "/realms/prontuarioedu"
-    for key, value in {"OIDC_ISSUER": realm, "OIDC_AUDIENCE": "prontuario-api",
+    for key, value in {"ALLOWED_HOSTS": json.dumps(hosts), "OIDC_ISSUER": realm, "OIDC_AUDIENCE": "prontuario-api",
                        "OIDC_AUTHORIZATION_URL": realm + "/protocol/openid-connect/auth",
                        "OIDC_TOKEN_URL": realm + "/protocol/openid-connect/token",
                        "OIDC_JWKS_URL": f"https://localhost:{values['AUTH_HTTPS_PORT']}/realms/prontuarioedu/protocol/openid-connect/certs",
@@ -157,26 +205,38 @@ def run(compose, *args):
     subprocess.run([*compose, *args], cwd=BACKEND, env=docker_environment(), check=True)
 
 
-def bootstrap_app(values):
-    # Only the explicit local development Compose is selected, never an external DATABASE_URL.
-    config = dotenv_values(BACKEND / ".env.mysql")
-    url = URL.create("mysql+pymysql", username=config["MYSQL_USER"], password=config["MYSQL_PASSWORD"],
-                     host="127.0.0.1", port=int(config.get("MYSQL_PORT") or "3306"), database="prontuarioedu")
-    sys.path.insert(0, str(BACKEND / "src"))
-    from prontuario_backend.models.users import bootstrap_system_admin
-    engine = create_engine(url, hide_parameters=True, connect_args={"connect_timeout": 5})
-    try:
-        result = bootstrap_system_admin(engine, values["AUTH_ADMIN_USER_ID"])
-        print("Administrador da aplicação criado." if result["created"] else "Administrador da aplicação já existe; vínculo preservado.")
-    finally:
-        engine.dispose()
+def bootstrap_app(values, compose):
+    # Execute no backend do projeto iniciado: portas/credenciais exportadas não escolhem outro MySQL.
+    code = textwrap.dedent("""
+        import json
+        import sys
+        from sqlalchemy.engine import make_url
+        from prontuario_backend.config.database import engine
+        from prontuario_backend.config.settings import get_settings
+        from prontuario_backend.models.users import bootstrap_system_admin
+
+        settings = get_settings()
+        target = make_url(settings.database_url.get_secret_value())
+        if settings.app_env != 'development' or target.drivername != 'mysql+pymysql' or target.host != 'mysql' or target.database != 'prontuarioedu':
+            raise ValueError('Bootstrap restrito ao MySQL do Compose de desenvolvimento')
+        database = engine()
+        try:
+            print(json.dumps(bootstrap_system_admin(database, sys.argv[1])))
+        finally:
+            database.dispose()
+    """)
+    completed = subprocess.run([*compose, "exec", "-T", "backend", "python", "-c", code, values["AUTH_ADMIN_USER_ID"]],
+                               cwd=BACKEND, env=docker_environment(), capture_output=True, text=True, check=True)
+    result = json.loads(completed.stdout)
+    print("Administrador da aplicação criado." if result["created"] else "Administrador da aplicação já existe; vínculo preservado.")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=["setup", "up", "info", "down"], nargs="?", default="up")
     parser.add_argument("--with-backend", action="store_true", help="Iniciar o modo MySQL local, a API e cadastrar o admin na aplicação")
-    parser.add_argument("--state-dir", type=Path, default=BACKEND / ".local/auth")
+    parser.add_argument("--state-dir", type=Path, default=BACKEND / ".local/auth",
+                        help="Dentro do projeto, use somente .local/; diretórios externos devem ficar fora de checkouts Git")
     parser.add_argument("--project-name", default="prontuario-auth")
     parser.add_argument("--https-port", type=int, default=8443)
     parser.add_argument("--http-port", type=int, default=8080)
@@ -203,7 +263,7 @@ def main():
                                "-f", str(BACKEND / "compose.yaml"), "-f", str(BACKEND / "compose.mysql.yaml"),
                                "-f", str(BACKEND / "compose.auth.backend.yaml")]
                 run(development, "up", "--build", "-d", "--wait", "--wait-timeout", "180")
-                bootstrap_app(values)
+                bootstrap_app(values, development)
         print("Login da aplicação: admin; perfil ADMINISTRADOR e permissão USUARIO_GERENCIAR após --with-backend.")
         print("Swagger:", values["AUTH_SWAGGER_ORIGIN"] + "/docs")
         print("Provedor:", values["AUTH_PUBLIC_URL"])
@@ -211,7 +271,7 @@ def main():
         print("CA pública para confiar no navegador local:", state / "certs/ca.crt")
         print("Setup/info não cadastram usuários no MySQL; up --with-backend executa o bootstrap explícito.")
         return 0
-    except (ValueError, OSError, KeyError, SQLAlchemyError, subprocess.CalledProcessError):
+    except (ValueError, OSError, KeyError, subprocess.CalledProcessError):
         print("Não foi possível preparar o administrador; confira a configuração privada e os logs locais. Nenhuma senha será exibida.")
         return 1
 

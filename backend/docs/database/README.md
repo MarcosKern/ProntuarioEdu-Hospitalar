@@ -35,28 +35,30 @@ PKs, índices de UNIQUEs declaradas nas tabelas e índices criados pelo MySQL pa
 - A organização usa `dominio__tabela` no mesmo database e FKs InnoDB entre essas tabelas. Nomes físicos não devem ser substituídos por `dominio.tabela` em consultas ou Models MySQL.
 - Unicidades condicionais usam índices UNIQUE sobre colunas geradas que retornam `1` ou `NULL`. Por exemplo, `chave_atual` diferencia ocupações abertas das encerradas. Regras que dependem do relógio, como expiração de alocação, continuam exigindo verificação na consulta e transação.
 - A largura de exibição obsoleta `TINYINT(1)` foi substituída por `TINYINT`, sem mudar armazenamento, defaults, expressão gerada ou constraints. Flags continuam exigindo validação explícita de 0/1 quando essa regra for necessária.
-- Os UUIDs e hashes com collation explícita preservam comparação binária. O login usa `utf8mb4_0900_as_ci`; o restante mantém a collation fornecida no SQL. Essas decisões não definem o vínculo com o `sub` do provedor OIDC, que ainda precisa ser projetado.
+- Os UUIDs e hashes com collation explícita preservam comparação binária. O login usa `utf8mb4_0900_as_ci`; o restante mantém a collation fornecida no SQL. O bootstrap inicial de desenvolvimento já vincula o `sub` Keycloak ao `id` do usuário `admin`, com `provedor=keycloak`, conforme a [ADR 0009](../../../docs/adr/0009-administrador-aplicacao-keycloak.md). A integração geral de identidades e de outros provedores continua pendente.
 - As referências a políticas nativas de autorização por linha foram substituídas pela validação por objeto no backend. FKs e CHECKs não verificam o usuário autenticado nem concedem permissão de leitura.
 
-O projeto das tabelas recebido foi preservado. As regras educacionais, fórmulas clínicas, perfis e invariantes entre registros continuam como propostas de domínio a validar; documentá-las não significa implementá-las ou homologá-las.
+O projeto das tabelas recebido foi preservado. O perfil administrativo inicial e sua permissão de gestão de usuários já são usados pelo bootstrap explícito. As demais regras educacionais, fórmulas clínicas, perfis e invariantes entre registros continuam como propostas de domínio a validar; documentá-las não significa implementá-las ou homologá-las.
 
 ## Diferença para o backend que já funciona
 
 As migrações em [`../../migrations`](../../migrations) mantêm as tabelas técnicas `record_permissions` e `audit_events`, além do controle `alembic_version`. Elas **não criam as 64 tabelas deste documento**. As tabelas técnicas e o domínio recebido têm finalidades e nomes diferentes; não devem ser renomeados ou unidos automaticamente.
 
-O material recebido contém campos e tabelas para senha local, recuperação de acesso, MFA e sessões. A aplicação atual valida tokens de um **provedor OIDC externo** e não implementa emissão local de tokens ou cadastro de senhas. A documentação não altera esse comportamento. Será necessário decidir o vínculo entre a identidade externa e os usuários/perfis de domínio antes de desenvolver essa integração.
+O material recebido contém campos e tabelas para senha local, recuperação de acesso, MFA e sessões. A aplicação valida tokens de um **provedor OIDC externo**, com Keycloak disponível no desenvolvimento, sem emissão local de tokens ou cadastro de senhas pela API. O [administrador inicial](../../ADMINISTRADOR.md) já possui vínculo com `cadastro__usuarios`, perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`. Outras contas, provedores e políticas de domínio exigem suas próprias implementações e validações.
 
 Não há INSERTs, usuários padrão ou pacientes de demonstração no SQL. A coluna `ficticio` faz parte da modelagem educacional recebida; sua presença e seu default não inserem pacientes. Os cenários ilustrativos da documentação não são scripts de carga.
 
+O cadastro do administrador é uma operação explícita posterior: o script usa `compose exec` no serviço `backend` do projeto que acabou de iniciar e utiliza a conexão configurada nesse contêiner. Não recalcula porta, usuário, senha ou destino do banco a partir de `.env.mysql`. O bootstrap não cria tabelas, não insere pacientes e não reativa concessões revogadas.
+
 ## Aplicação do schema
 
-O responsável autorizou a inicialização deste SQL no [modo opcional MySQL em contêiner de desenvolvimento](../../docker/mysql/README.md). Esse caminho embarca o arquivo na imagem e executa a criação do banco e das tabelas no primeiro uso de um volume vazio. Não implementa os Models, endpoints ou invariantes de negócio descritos neste material. Para o servidor externo e para integração de domínio na aplicação, as etapas abaixo continuam necessárias.
+O responsável autorizou a inicialização deste SQL no [modo opcional MySQL em contêiner de desenvolvimento](../../docker/mysql/README.md). Esse caminho embarca o arquivo na imagem e executa a criação do banco e das tabelas no primeiro uso de um volume vazio. A criação das tabelas não implementa automaticamente os fluxos de negócio. O vínculo administrativo inicial já está integrado separadamente; para o servidor externo e os demais módulos de domínio, as etapas abaixo continuam necessárias.
 
 O arquivo SQL contém `CREATE DATABASE IF NOT EXISTS prontuarioedu` e `USE prontuarioedu`. **Selecionar outro banco na linha de comando não muda esse destino.** Não importe o arquivo no servidor real como parte da configuração do editor ou da API.
 
 O DDL destina-se a uma instalação inicial em banco vazio; os `CREATE TABLE` não são idempotentes. No MySQL, DDL provoca commits implícitos: uma falha intermediária pode deixar parte da estrutura criada. Reexecutar o arquivo sem analisar esse estado pode falhar ou conflitar com objetos existentes.
 
-Antes da implementação, será necessário:
+Antes de expandir a integração de domínio ou aplicar o schema fora do modo de desenvolvimento autorizado, será necessário:
 
 1. Validar o modelo com o responsável, incluindo autenticação, autorização, regras educacionais e nomes físicos.
 2. Definir migrações Alembic por etapa, compatibilidade com as tabelas técnicas atuais e estratégia de implantação/recuperação.
@@ -73,4 +75,4 @@ O dicionário, as tabelas do SQL e o grafo devem permanecer sincronizados: 64 no
 
 Nesta revisão, o SQL foi importado em um contêiner MySQL 8.4 descartável, sem rede. A importação terminou sem avisos: foram conferidas 64 tabelas InnoDB, 121 FKs, 40 CHECKs e zero registros de aplicação. O contêiner e seu armazenamento temporário foram removidos ao final; nenhum banco real foi acessado.
 
-Essa validação estrutural não comprova os fluxos de negócio, as políticas de acesso, os resultados clínicos ou a integração com a aplicação existente. Qualquer uso real depende das etapas anteriores.
+Essa validação estrutural do SQL não executou o bootstrap administrativo e não comprova os demais fluxos de negócio, políticas de acesso ou resultados clínicos. O cadastro e a autorização do administrador possuem testes próprios; a ampliação do uso real depende das etapas anteriores.

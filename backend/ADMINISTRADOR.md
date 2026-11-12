@@ -10,13 +10,15 @@ De `backend`, com o venv preparado:
 .venv/bin/python scripts/auth_dev.py up --with-backend
 ```
 
-O comando prepara senhas aleatórias e certificados HTTPS em `.local/auth/`, sobe Keycloak e seu MySQL separado, inicia o modo MySQL de desenvolvimento e a API e cadastra transacionalmente o administrador na aplicação. Somente o volume de desenvolvimento vazio importa o SQL de domínio. O bootstrap não seleciona o `DATABASE_URL` externo para inserir o usuário.
+O comando prepara senhas aleatórias e certificados HTTPS em `.local/auth/`, sobe Keycloak e seu MySQL separado e inicia o modo MySQL de desenvolvimento e a API. Depois executa o bootstrap transacional via `compose exec` no serviço `backend` desse mesmo projeto, usando a conexão efetiva da aplicação. O destino não é recalculado a partir da porta, usuário ou senha de `.env.mysql`. Somente o volume de desenvolvimento vazio importa o SQL de domínio.
 
 As próximas execuções preservam as contas e as senhas. O bootstrap não reativa usuários/perfis/permissões revogados nem assume um cadastro `admin` com outro vínculo. As migrations continuam sem cadastros automáticos. Nenhum paciente, profissional ou turma é criado.
 
 ## Senha e primeiro acesso
 
 Abra localmente **`.local/auth/admin-inicial.txt`**. O arquivo contém o login `admin` e sua senha temporária, possui permissão `600` e está ignorado pelo Git e Docker. A senha não é impressa pelo script.
+
+O estado privado da identidade dentro deste checkout só pode ficar sob `backend/.local/`, cuja área inteira é ignorada pelo Git e pelo build Docker. Se usar `--state-dir`, escolha uma subpasta dessa área ou um caminho externo que não pertença a outro checkout Git. Não use pastas de código, documentação ou outro repositório para guardar essas senhas e chaves. A configuração privada preexistente de conexão da aplicação continua nos arquivos `.env` e `.env.mysql`, também ignorados.
 
 1. No acesso local, importe a CA pública `.local/auth/certs/ca.crt` no gerenciamento de certificados do navegador/sistema. A API usa `OIDC_SSL_CA` para verificar o HTTPS; não desative a validação de certificado.
 2. Abra **http://127.0.0.1:8000/docs**.
@@ -40,7 +42,7 @@ O UUID inicial é compartilhado entre o usuário Keycloak (`sub`) e `cadastro__u
 - `models/users.py`: cadastro, vínculo, permissão e bootstrap transacional.
 - `controllers/admin.py`: autorização administrativa antes da execução.
 
-Os projetos Compose são `prontuario-auth` e `prontuario-auth-app`, com volumes próprios. O Keycloak ignora um realm já existente: editar o JSON não atualiza uma instalação em uso. Não apague volumes para aplicar alterações sem um procedimento revisado.
+Com os nomes padrão, os projetos Compose são `prontuario-auth` e `prontuario-auth-app`, com volumes próprios. O bootstrap acompanha o serviço `backend` do projeto efetivamente iniciado, inclusive quando o nome é personalizado. O Keycloak ignora um realm já existente: editar o JSON não atualiza uma instalação em uso. Não apague volumes para aplicar alterações sem um procedimento revisado.
 
 Para parar o provedor preservando seu banco:
 
@@ -60,6 +62,6 @@ docker compose --project-name prontuario-auth-app \
 
 ## Codespaces e limites
 
-O script calcula as origens das portas 8000 e 8080 pelo nome do Codespace. Encaminhe ambas como privadas e abra a porta do login pelo navegador para autenticar o túnel do GitHub. Use o endereço do Swagger impresso pelo script. O fluxo completo atrás da autenticação privada do GitHub precisa ser validado no Codespace real; não torne portas públicas para contornar o controle.
+O script calcula as origens das portas 8000 e 8080 pelo nome do Codespace. Ao configurar a API, preserva os valores existentes de `ALLOWED_HOSTS` e acrescenta somente o hostname exato de `AUTH_SWAGGER_ORIGIN`, sem wildcard. Encaminhe ambas as portas como privadas e abra a porta do login pelo navegador para autenticar o túnel do GitHub. Use o endereço do Swagger impresso pelo script. O fluxo completo atrás da autenticação privada do GitHub precisa ser validado no Codespace real; a configuração dos hosts não substitui esse login. Não torne portas públicas para contornar o controle.
 
 Este é um provedor de desenvolvimento. Produção exige infraestrutura, certificados, MFA, recuperação e políticas próprias. O login na gestão do provedor não é a conta `admin` do ProntuarioEdu. Veja a [ADR 0009](../docs/adr/0009-administrador-aplicacao-keycloak.md).

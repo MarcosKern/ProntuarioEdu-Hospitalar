@@ -58,8 +58,6 @@ Reinicie a API ou recrie seu contêiner após alterar as configurações. Config
 
 No modo Keycloak, o [administrador da aplicação](ADMINISTRADOR.md) pode solicitar também `admin:access`. Esse escopo fica desmarcado por padrão. `GET /api/v1/admin/me` exige os dois escopos e verifica no banco o cadastro ativo, o perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`.
 
-No modo Keycloak, o [administrador da aplicação](ADMINISTRADOR.md) pode solicitar também `admin:access`. Esse escopo fica desmarcado por padrão. `GET /api/v1/admin/me` exige os dois escopos e verifica no banco o cadastro ativo, o perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`.
-
 O botão **Authorize** já está configurado para obter o token no provedor por **Authorization Code + PKCE S256**, com `identity:read` pré-selecionado e client ID lido de `SWAGGER_CLIENT_ID`.
 
 1. Preencha as cinco variáveis `OIDC_*` de endereço/identificação e `SWAGGER_CLIENT_ID` com os valores do provedor e cliente reais. Os campos vazios de `.env.example` não geram um login funcional.
@@ -100,7 +98,7 @@ Essa consulta é opcional para a interface antecipar a renovação. Cada operaç
 4. Com `403`, o usuário autenticado não possui todos os escopos exigidos; renovar repetidamente não concede permissão.
 5. Com `503`, a autenticação depende de configuração ou serviço indisponível. Mantenha a operação bloqueada e trate a indisponibilidade.
 
-O backend não emite tokens, não cria usuários e não estende `exp`. A política de armazenamento de refresh tokens precisa respeitar o cliente escolhido: não gravar tokens em logs, URLs, no repositório ou no `.env` versionado. A implementação de clientes Desktop/Web e o fluxo real de renovação dependem do provedor e dos clientes ainda não definidos.
+A API não emite tokens nem estende `exp`. O cadastro administrativo inicial é feito somente pelo bootstrap explícito de desenvolvimento, dentro do serviço `backend` do projeto Compose iniciado. O estado privado desse bootstrap dentro do checkout fica sob `backend/.local/`; caminhos externos não podem pertencer a outro checkout Git. A política de armazenamento de refresh tokens precisa respeitar o cliente escolhido: não gravar tokens em logs, URLs, no repositório ou no `.env` versionado. Clientes Desktop/Web e sua integração real de renovação ainda precisam ser implementados; produção exige sua própria configuração de identidade.
 
 ## Logout e revogação
 

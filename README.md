@@ -2,7 +2,7 @@
 
 Projeto com **Back-end Python**, **Desktop Python** e **Web responsiva**, com tecnologia Web em aberto. O Back-end adota **MVC**, escolhido para facilitar o aprendizado e o trabalho de uma turma com conhecimento intermediário.
 
-**Estado atual:** Back-end MVC inicial executável com FastAPI, Swagger, SQLAlchemy com MySQL externo, migrações e validação OAuth2/OIDC configurável. Desktop e Web ainda são estruturas documentais. O provedor de autenticação real, o toolkit Desktop e a tecnologia Web precisam de configuração/escolha. A decisão está na [ADR 0001](docs/adr/0001-arquitetura-inicial.md).
+**Estado atual:** Back-end MVC executável com FastAPI, Swagger, SQLAlchemy/MySQL 8.4, migrações e validação OAuth2/OIDC. O desenvolvimento já possui Keycloak e bootstrap explícito do usuário `admin`, com cadastro, perfil e permissão verificados no banco da aplicação. Desktop e Web ainda são estruturas documentais; identidade de produção, toolkit Desktop e tecnologia Web continuam pendentes. Veja a [ADR 0001](docs/adr/0001-arquitetura-inicial.md) e a [ADR 0009](docs/adr/0009-administrador-aplicacao-keycloak.md).
 
 ## Como o sistema funciona
 
@@ -47,7 +47,7 @@ MVC organiza o código; o servidor continua sendo uma aplicação única. Não v
 
 ### Framework e banco adotados
 
-O Back-end usa FastAPI com Swagger integrado e SQLAlchemy/PyMySQL para MySQL 8.4 externo. Não é necessário escolher ou instalar Django. A imagem Docker usa Python 3.12 com Alpine 3.23 fixada por digest. OIDC depende de provedor externo; Desktop e Web permanecem em aberto.
+O Back-end usa FastAPI com Swagger integrado e SQLAlchemy/PyMySQL para MySQL 8.4. O Compose base usa MySQL externo; os modos locais são iniciados explicitamente. A imagem Docker usa Python 3.12 com Alpine 3.23 fixada por digest. O Keycloak é o provedor OIDC de desenvolvimento, separado da API; a identidade de produção e as tecnologias dos clientes permanecem em aberto.
 
 ## Estrutura de pastas
 
@@ -85,11 +85,12 @@ docs/
 
 A simplificação para MVC é do Back-end. O Desktop mantém sua estrutura de cliente: tela → fluxo local → cliente HTTP → servidor. A Web terá apresentação responsiva e comunicação com a API conforme as convenções da tecnologia escolhida. Não é necessário copiar a estrutura do servidor nos clientes. Offline e PWA não estão implementados e precisam de decisão própria.
 
-Os arquivos `.gitkeep` preservam pastas vazias no Git. Os READMEs das subpastas explicam onde colocar cada responsabilidade; ainda não existem funcionalidades de aplicação.
+Os arquivos `.gitkeep` preservam pastas vazias no Git. Os READMEs das subpastas explicam onde colocar cada responsabilidade. O Back-end já implementa autenticação, consulta da validade do acesso e verificação do administrador; os clientes e módulos clínicos ainda precisam ser desenvolvidos.
 
 | Documento | O que encontrar |
 | --- | --- |
 | [Back-end](backend/README.md) | MVC, divisão de competências e exemplo prático |
+| [Administrador da aplicação](backend/ADMINISTRADOR.md) | Keycloak de desenvolvimento, cadastro inicial e primeiro login |
 | [Desktop](desktop/README.md) | Telas, fluxos e consumo da API |
 | [Web](web/README.md) | Interface responsiva e competências |
 | [Contratos](contracts/README.md) | Compatibilidade entre servidor e clientes |
@@ -120,7 +121,7 @@ O [README do Back-end](backend/README.md#exemplo-prático-registrar-uma-anotaç�
 ## Passos de desenvolvimento
 
 1. **Definir um primeiro fluxo pequeno.** Registrar usuários, permissões, dados necessários e critérios de aceitação, usando dados sintéticos.
-2. **Revisar as ferramentas.** FastAPI e SQLAlchemy/MySQL já compõem o ambiente atual (ADR 0004). Configurar o provedor OAuth2/OIDC e definir toolkit Desktop; Web pode ser decidida em sua etapa.
+2. **Revisar as ferramentas.** FastAPI e SQLAlchemy/MySQL já compõem o ambiente atual (ADR 0004), com Keycloak de desenvolvimento (ADR 0009). Definir a identidade de produção e o toolkit Desktop; Web pode ser decidida em sua etapa.
 3. **Preparar o ambiente.** Fixar versões, dependências e lockfiles; documentar configuração sem segredos e comandos verificados de instalação/testes.
 4. **Combinar o contrato.** Definir caminho, método, entrada, respostas, erros e segurança da primeira operação; configurar a fonte de verdade do OpenAPI.
 5. **Implementar o Model.** Criar dados, regras e persistência; testar as validações e transações relevantes.
@@ -161,13 +162,15 @@ FastAPI gera OpenAPI a partir das rotas e esquemas. Em desenvolvimento, a interf
 
 ## Executar e testar hoje
 
-Siga o [guia de configuração do Back-end](backend/README.md#configurar-o-ambiente-de-desenvolvimento) nesta ordem: pré-requisitos → `.env` com MySQL externo → Python local ou Compose → verificação de saúde → testes em banco separado. O guia contém comandos Linux/macOS/Windows, certificado TLS e diagnóstico de falhas.
+Para o ambiente de desenvolvimento com login `admin`, siga o [guia do administrador](backend/ADMINISTRADOR.md). Ele sobe os serviços Docker e executa o bootstrap dentro do contêiner `backend` do projeto iniciado, usando a conexão efetiva da aplicação. O estado privado da identidade, incluindo suas credenciais, certificados e realm renderizado, fica em `backend/.local/`, fora do Git e do contexto de build. Esse modo não é uma implantação de produção.
 
-Somente depois de configurar o `.env`, execute de `backend` `python scripts/dev.py --setup` ou `docker compose up --build -d --wait`. Os dois comandos aplicam migrações no banco configurado; utilize banco de desenvolvimento autorizado. O servidor ocupa o terminal no modo local; execute testes em outro terminal. Consulte a [suíte de testes](backend/tests/README.md) para configurar MYSQL_TEST_URL com segurança. Desktop e Web ainda não têm aplicação executável.
+Para o modo com MySQL externo, siga o [guia de configuração do Back-end](backend/README.md#configurar-o-ambiente-de-desenvolvimento) nesta ordem: pré-requisitos → `.env` com MySQL externo → Python local ou Compose → verificação de saúde → testes em banco separado. O guia contém comandos Linux/macOS/Windows, certificado TLS e diagnóstico de falhas.
+
+Nesse modo, somente depois de configurar o `.env`, execute de `backend` `python scripts/dev.py --setup` ou `docker compose up --build -d --wait`. Os dois comandos aplicam migrações no banco configurado; utilize banco de desenvolvimento autorizado. O servidor ocupa o terminal no modo local; execute testes em outro terminal. Consulte a [suíte de testes](backend/tests/README.md) para configurar MYSQL_TEST_URL com segurança. Desktop e Web ainda não têm aplicação executável.
 
 ## Segurança e operação
 
-Veja o [guia operacional](backend/SECURITY.md) e a [ADR 0003](docs/adr/0003-seguranca-operacao.md). As migrações não inserem cadastros ou dados de demonstração. As políticas clínicas e o provedor real ainda precisam ser definidos.
+Veja o [guia operacional](backend/SECURITY.md) e a [ADR 0003](docs/adr/0003-seguranca-operacao.md). As migrações não inserem cadastros ou dados de demonstração. O administrador é criado somente pelo bootstrap explícito autorizado; políticas clínicas e identidade de produção continuam pendentes.
 
 ## Banco MySQL externo
 
@@ -177,4 +180,6 @@ O [modelo de domínio revisado para MySQL](backend/docs/database/README.md) est�
 
 ## GitHub Codespaces
 
-A configuração em [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json) padroniza Python 3.12, venv, dependências dev, Docker/Compose e extensões Postman, cliente MySQL, Python e Ruff. Siga o [passo a passo para executar a configuração no GitHub](.devcontainer/README.md#passo-a-passo-para-executar-a-configuração-no-github), com criação do Codespace, reconstrução de um ambiente existente e verificações da instalação. O banco continua MySQL externo; nenhuma importação SQL ou migração acontece automaticamente na criação do ambiente.
+A configuração em [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json) padroniza Python 3.12, venv, dependências dev, Docker/Compose e extensões Postman, cliente MySQL, Python e Ruff. Siga o [passo a passo para executar a configuração no GitHub](.devcontainer/README.md#passo-a-passo-para-executar-a-configuração-no-github), com criação do Codespace, reconstrução de um ambiente existente e verificações da instalação. A criação do editor não inicia os serviços de banco/autenticação nem executa importação SQL ou migrações. Escolha depois o modo de execução autorizado: Compose base com MySQL externo ou o modo explícito de desenvolvimento local.
+
+No modo Keycloak, o script preserva os hosts permitidos e acrescenta somente o hostname exato de `AUTH_SWAGGER_ORIGIN` ao configurar a API. As portas da API e do login permanecem privadas. Isso não substitui o login do túnel GitHub; o fluxo OAuth completo entre portas privadas precisa de validação em um Codespace real.

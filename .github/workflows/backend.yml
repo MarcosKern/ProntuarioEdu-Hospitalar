@@ -55,15 +55,23 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build -t prontuario-backend:ci backend
+      - name: Build Keycloak image
+        run: docker build -f backend/docker/keycloak/Dockerfile -t prontuario-keycloak:ci backend
       - name: Scan image vulnerabilities and secrets
         # Official Trivy 0.65.0 image, pinned to the verified registry digest.
         # No runner-side download/install script is required.
         run: |
-          docker run --rm \
-            --volume /var/run/docker.sock:/var/run/docker.sock:ro \
-            aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
-            image --image-src docker \
-            --db-repository ghcr.io/aquasecurity/trivy-db:2 \
-            --scanners vuln,secret \
-            --severity HIGH,CRITICAL --exit-code 1 --timeout 10m \
-            prontuario-backend:ci
+          trivy_scan_failed=0
+          for scan_target in prontuario-backend:ci prontuario-keycloak:ci; do
+            if ! docker run --rm \
+              --volume /var/run/docker.sock:/var/run/docker.sock:ro \
+              aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
+              image --image-src docker \
+              --db-repository ghcr.io/aquasecurity/trivy-db:2 \
+              --scanners vuln,secret \
+              --severity HIGH,CRITICAL --exit-code 1 --timeout 10m \
+              "$scan_target"; then
+              trivy_scan_failed=1
+            fi
+          done
+          exit "$trivy_scan_failed"
