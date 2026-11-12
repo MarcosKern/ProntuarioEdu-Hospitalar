@@ -1,5 +1,7 @@
 # Back-end Python com MVC
 
+Para iniciar com o usuário **`admin` do ProntuarioEdu**, perfil `ADMINISTRADOR` e login Keycloak de desenvolvimento, consulte [primeiro administrador da aplicação](ADMINISTRADOR.md). O cadastro é explícito; a senha temporária fica em arquivo privado e exige troca no primeiro acesso.
+
 > **Banco padrão: MySQL externo.** No Compose base, configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há fallback automático para banco local.
 
 Para desenvolvimento com o SQL recebido já inicializado em um serviço MySQL próprio, use o [modo opcional MySQL em contêiner](docker/mysql/README.md). O guia inclui preparação das credenciais, inicialização do schema, conexão do cliente e acesso à API no Codespace.

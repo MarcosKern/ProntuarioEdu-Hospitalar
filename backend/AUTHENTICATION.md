@@ -32,13 +32,14 @@ O cache guarda chaves públicas, não decisões de autenticação. O token é va
 
 ## Configurar o provedor real
 
-O provedor de login permanece externo e ainda precisa ser escolhido/configurado. Preencha no `.env`, sem versionar valores reais:
+O desenvolvimento pode usar o Keycloak escolhido pelo responsável e o [bootstrap do administrador da aplicação](ADMINISTRADOR.md), que configura o `.env` e o Swagger. Para outros ambientes/provedores, preencha no `.env`, sem versionar valores reais:
 
 | Variável | Conteúdo |
 | --- | --- |
 | `OIDC_ISSUER` | Emissor exato esperado no claim `iss`, usando HTTPS |
 | `OIDC_AUDIENCE` | Audiência da API; não usar automaticamente o client ID do aplicativo |
 | `OIDC_JWKS_URL` | Endpoint HTTPS de chaves públicas do emissor |
+| `OIDC_SSL_CA` | CA confiável opcional para verificar o HTTPS do JWKS local |
 | `OIDC_AUTHORIZATION_URL` | Endpoint HTTPS de autorização do provedor |
 | `OIDC_TOKEN_URL` | Endpoint HTTPS de emissão/renovação de tokens do provedor |
 | `OIDC_SCOPE_CLAIM` | `scope` por padrão; selecionar `scp` quando esse for o claim do provedor |
@@ -54,6 +55,10 @@ O claim de escopos é uma string de valores separados por espaços. Papéis, cor
 Reinicie a API ou recrie seu contêiner após alterar as configurações. Configure Authorization Code com PKCE para os clientes públicos; veja o [roteiro do Swagger](README.md#preparar-o-botão-authorize-com-oauth2-e-pkce). Solicite `identity:read` ao autorizar o cliente. O backend recebe **access tokens**, não ID tokens.
 
 ## Solicitar o token pelo Swagger
+
+No modo Keycloak, o [administrador da aplicação](ADMINISTRADOR.md) pode solicitar também `admin:access`. Esse escopo fica desmarcado por padrão. `GET /api/v1/admin/me` exige os dois escopos e verifica no banco o cadastro ativo, o perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`.
+
+No modo Keycloak, o [administrador da aplicação](ADMINISTRADOR.md) pode solicitar também `admin:access`. Esse escopo fica desmarcado por padrão. `GET /api/v1/admin/me` exige os dois escopos e verifica no banco o cadastro ativo, o perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`.
 
 O botão **Authorize** já está configurado para obter o token no provedor por **Authorization Code + PKCE S256**, com `identity:read` pré-selecionado e client ID lido de `SWAGGER_CLIENT_ID`.
 

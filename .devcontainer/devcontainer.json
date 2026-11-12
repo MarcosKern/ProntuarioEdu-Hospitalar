@@ -20,8 +20,13 @@
   },
   "postCreateCommand": ["python3", ".devcontainer/setup.py"],
   "waitFor": "postCreateCommand",
-  "forwardPorts": [8000],
+  "forwardPorts": [8000, 8080],
   "portsAttributes": {
+    "8080": {
+      "label": "ProntuarioEdu — login Keycloak de desenvolvimento",
+      "protocol": "http",
+      "onAutoForward": "notify"
+    },
     "8000": {
       "label": "ProntuarioEdu API / Swagger",
       "protocol": "http",

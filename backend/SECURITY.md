@@ -18,6 +18,10 @@ Revogação imediata e logout global dependem do provedor e da estratégia acord
 
 ## Permissões e auditoria
 
+O [primeiro administrador](ADMINISTRADOR.md) é criado por um comando explícito de desenvolvimento em `cadastro__usuarios`, com vínculo ao `sub` Keycloak, perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`. `controllers/admin.py` verifica o cadastro ativo e a concessão após validar os escopos do token. A conta não recebe bypass de prontuários. Senha temporária, realm renderizado e chaves TLS ficam em `.local/auth`, ignorado pelo Git/build. O acesso HTTPS ao JWKS usa `OIDC_SSL_CA` quando configurada, mantendo verificação do certificado e hostname.
+
+O [primeiro administrador](ADMINISTRADOR.md) é criado por um comando explícito de desenvolvimento em `cadastro__usuarios`, com vínculo ao `sub` Keycloak, perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`. `controllers/admin.py` verifica o cadastro ativo e a concessão após validar os escopos do token. A conta não recebe bypass de prontuários. Senha temporária, realm renderizado e chaves TLS ficam em `.local/auth`, ignorado pelo Git/build. O acesso HTTPS ao JWKS usa `OIDC_SSL_CA` quando configurada, mantendo verificação do certificado e hostname.
+
 `controllers/permissions.py::require_record_access` exige concessão explícita em `record_permissions`, sem bypass administrativo implícito. Use identidade validada pelo servidor, nunca campos do corpo da requisição. Falha de banco/auditoria bloqueia a operação. Nenhum endpoint clínico foi criado enquanto a regra de perfis não for informada.
 
 A concessão tem escopo de um registro e ação read/write. Ela não substitui políticas clínicas, vínculo organizacional ou aprovação formal: essas regras precisam ser definidas antes de concessões reais. IDs não comprovam existência de prontuários. Não dê acesso direto a essa tabela a usuários finais.

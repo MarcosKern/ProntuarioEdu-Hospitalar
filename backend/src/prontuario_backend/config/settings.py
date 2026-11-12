@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     oidc_issuer: str = ""
     oidc_audience: str = ""
     oidc_jwks_url: str = ""
+    oidc_ssl_ca: str = ""
     oidc_authorization_url: str = ""
     oidc_token_url: str = ""
     oidc_scope_claim: Literal["scope", "scp"] = "scope"
@@ -47,7 +48,7 @@ class Settings(BaseSettings):
         db_query = parse_qs(urlsplit(self.database_url.get_secret_value()).query)
         if any(key.lower().startswith("ssl") or key.lower() in {"connect_timeout", "read_timeout", "write_timeout"} for key in db_query):
             raise ValueError("Configure MySQL TLS and timeouts through settings")
-        for ca in (self.mysql_ssl_ca, self.redis_ssl_ca):
+        for ca in (self.mysql_ssl_ca, self.redis_ssl_ca, self.oidc_ssl_ca):
             if ca and not Path(ca).is_file():
                 raise ValueError("Configured CA must be a readable file")
         if self.redis_url:

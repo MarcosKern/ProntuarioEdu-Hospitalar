@@ -13,6 +13,8 @@ O responsável escolheu MVC para simplificar o Back-end: Models, Views e Control
 
 ## Git e revisão
 
+Atualização da identidade de desenvolvimento: o responsável escolheu Keycloak no Docker e autorizou o primeiro usuário `admin` da aplicação (ADR 0009). `backend/scripts/auth_dev.py up --with-backend` pode cadastrar esse usuário, perfil, permissão e auditoria somente no modo MySQL de desenvolvimento explícito. Não criar dados clínicos nem reativar concessões revogadas. Senhas/chaves ficam em `backend/.local/auth`, fora do Git/build, e não devem ser impressas. Administradores de infraestrutura são separados dos usuários da aplicação. A identidade de produção continua pendente.
+
 - Criar branches é permitido sem autorização adicional.
 - Antes de excluir branches, reescrever seu histórico ou alterar branches existentes, obtenha autorização explícita do responsável, salvo autorização já dada para a operação específica. Isso inclui commits, pushes e merges em branches existentes; criar uma branch de trabalho não autoriza alterar outras branches.
 - Não execute merge sem pelo menos quatro aprovações humanas válidas, revisão automática do Codex concluída, bloqueios resolvidos e validação arquitetural aplicável aprovada.

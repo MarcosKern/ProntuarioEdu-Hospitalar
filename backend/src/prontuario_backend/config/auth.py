@@ -1,5 +1,6 @@
 import math
 import re
+import ssl
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -12,7 +13,10 @@ from fastapi.security import OAuth2AuthorizationCodeBearer, SecurityScopes
 
 from prontuario_backend.config.settings import get_settings
 
-API_SCOPES = {"identity:read": "Consultar a própria identidade e a validade do acesso"}
+API_SCOPES = {
+    "identity:read": "Consultar a própria identidade e a validade do acesso",
+    "admin:access": "Consultar a própria identidade administrativa; não concede acesso a prontuários",
+}
 SCOPE_TOKEN = re.compile(r'[\x21\x23-\x5b\x5d-\x7e]+')
 
 # O Swagger preenche as URLs reais por instância em configure_swagger_auth.
@@ -39,7 +43,8 @@ class AuthenticatedUser:
 
 @lru_cache(maxsize=4)
 def jwks_client(url):
-    return jwt.PyJWKClient(url, timeout=5)
+    context = ssl.create_default_context(cafile=get_settings().oidc_ssl_ca or None)
+    return jwt.PyJWKClient(url, timeout=5, ssl_context=context)
 
 
 def invalid_token(message="Token inválido"):

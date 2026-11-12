@@ -1,0 +1,66 @@
+# Identidades de desenvolvimento. Não importa o banco clínico nem inicia a API.
+name: prontuario-auth
+services:
+  identity-mysql:
+    image: mysql:8.4@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
+    environment:
+      MYSQL_DATABASE: prontuario_identity
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: ${AUTH_DB_PASSWORD:?Execute scripts/auth_dev.py setup}
+      MYSQL_ROOT_PASSWORD: ${AUTH_DB_ROOT_PASSWORD:?Execute scripts/auth_dev.py setup}
+    volumes:
+      - identity_data:/var/lib/mysql
+    networks: [identity_database]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 30
+  keycloak:
+    image: prontuario-keycloak-dev:26.8.2
+    mem_limit: 1g
+    build:
+      context: .
+      dockerfile: docker/keycloak/Dockerfile
+    environment:
+      KC_DB: mysql
+      KC_DB_URL: jdbc:mysql://identity-mysql:3306/prontuario_identity
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${AUTH_DB_PASSWORD:?Execute scripts/auth_dev.py setup}
+      KC_BOOTSTRAP_ADMIN_USERNAME: keycloak-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${AUTH_MANAGEMENT_PASSWORD:?Execute scripts/auth_dev.py setup}
+      KC_HOSTNAME: ${AUTH_PUBLIC_URL:?Execute scripts/auth_dev.py setup}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/tls/server.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/tls/server.key
+      KC_HTTP_MANAGEMENT_SCHEME: http
+      KC_HEALTH_ENABLED: "true"
+      JAVA_OPTS_KC_HEAP: "-XX:MaxRAMPercentage=60.0 -XX:InitialRAMPercentage=20.0"
+    volumes:
+      - ${AUTH_STATE_DIR:?Execute scripts/auth_dev.py setup}/realm.json:/opt/keycloak/data/import/prontuarioedu-realm.json:ro
+      - ${AUTH_STATE_DIR:?Execute scripts/auth_dev.py setup}/certs/server.crt:/opt/keycloak/conf/tls/server.crt:ro
+      - ${AUTH_STATE_DIR:?Execute scripts/auth_dev.py setup}/certs/server.key:/opt/keycloak/conf/tls/server.key:ro
+    ports:
+      - "127.0.0.1:${AUTH_HTTP_PORT:-8080}:8080"
+      - "127.0.0.1:${AUTH_HTTPS_PORT:-8443}:8443"
+    networks: [identity_front, identity_database]
+    depends_on:
+      identity-mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/opt/keycloak/bin/prontuario-healthcheck"]
+      interval: 5s
+      timeout: 5s
+      start_period: 90s
+      retries: 40
+    stop_grace_period: 30s
+networks:
+  identity_front:
+    name: ${AUTH_NETWORK_NAME:-prontuario-auth}
+  identity_database:
+    internal: true
+volumes:
+  identity_data:

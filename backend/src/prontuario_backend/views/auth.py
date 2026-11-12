@@ -8,6 +8,14 @@ class IdentityResponse(BaseModel):
     subject: str
 
 
+class AdministratorResponse(IdentityResponse):
+    user_id: str
+    login: str
+    name: str
+    profile: Literal["ADMINISTRADOR"] = "ADMINISTRADOR"
+    permissions: list[str] = Field(default_factory=lambda: ["USUARIO_GERENCIAR"])
+
+
 class SessionResponse(BaseModel):
     authenticated: Literal[True] = True
     subject: str

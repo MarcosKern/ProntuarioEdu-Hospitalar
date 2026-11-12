@@ -19,7 +19,7 @@ def test_protected_route_requires_token():
 
 
 def test_provider_not_configured_fails_closed(monkeypatch):
-    monkeypatch.delenv("OIDC_ISSUER", raising=False)
+    monkeypatch.setenv("OIDC_ISSUER", "")
     response = client.get("/api/v1/me", headers={"Authorization": "Bearer example"})
     assert response.status_code == 503
 

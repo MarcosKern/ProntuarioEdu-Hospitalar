@@ -1,11 +1,16 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Security
+from fastapi import APIRouter, Depends, Security
 
 from prontuario_backend.config.auth import AuthenticatedUser, authenticate_request
+from prontuario_backend.controllers.admin import require_system_admin
 from prontuario_backend.controllers.auth import session_status
 from prontuario_backend.controllers.health import health
-from prontuario_backend.views.auth import IdentityResponse, SessionResponse
+from prontuario_backend.views.auth import (
+    AdministratorResponse,
+    IdentityResponse,
+    SessionResponse,
+)
 from prontuario_backend.views.errors import ERROR_RESPONSES
 from prontuario_backend.views.health import HealthResponse
 
@@ -32,3 +37,12 @@ def identity(user: Annotated[AuthenticatedUser, Security(authenticate_request, s
             responses={status: ERROR_RESPONSES[status] for status in (401, 403, 405, 413, 429, 500, 503)})
 def validate_session(user: Annotated[AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])]):
     return session_status(user)
+
+
+@router.get("/api/v1/admin/me", response_model=AdministratorResponse, tags=["Autenticação"],
+            summary="Confirmar acesso administrativo", operation_id="get_admin_identity",
+            description=("Exige identity:read e admin:access, usuário ativo e perfil ADMINISTRADOR "
+                         "com USUARIO_GERENCIAR no banco do ProntuarioEdu. Não concede acesso a prontuários."),
+            responses={status: ERROR_RESPONSES[status] for status in (401, 403, 405, 413, 429, 500, 503)})
+def admin_identity(admin: Annotated[AdministratorResponse, Depends(require_system_admin)]):
+    return admin

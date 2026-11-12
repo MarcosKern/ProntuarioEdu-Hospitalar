@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from prontuario_backend.config.auth import API_SCOPES, oauth2
+from prontuario_backend.config.auth import oauth2
 from prontuario_backend.config.settings import Settings
 
 
@@ -13,7 +13,7 @@ def swagger_config(settings: Settings):
         "usePkceWithAuthorizationCodeGrant": True,
         "useBasicAuthenticationWithAccessCodeGrant": False,
         "scopeSeparator": " ",
-        "scopes": list(API_SCOPES),
+        "scopes": ["identity:read"],
     }
     if settings.swagger_client_id:
         oauth["clientId"] = settings.swagger_client_id
@@ -23,7 +23,7 @@ def swagger_config(settings: Settings):
         "description": (
             "API compartilhada pelos aplicativos Desktop, Web e futuras integrações. "
             "A documentação apresenta somente as rotas implementadas. "
-            "O login usa um provedor OAuth2/OIDC externo; não há contas padrão."
+            "O login usa um provedor OAuth2/OIDC externo. O bootstrap do administrador é explícito."
         ),
         "docs_url": None if production else "/docs",
         "redoc_url": None,

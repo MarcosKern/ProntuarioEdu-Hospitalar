@@ -28,10 +28,13 @@ def isolated_settings(monkeypatch):
         admin.dispose()
     monkeypatch.setenv("APP_ENV", "test")
     monkeypatch.setenv("DATABASE_URL", url or "mysql+pymysql://unused@127.0.0.1/prontuario_test")
-    monkeypatch.delenv("REDIS_URL", raising=False)
+    # Empty process values also override real development values in .env.
+    monkeypatch.setenv("REDIS_URL", "")
     for name in ("OIDC_ISSUER", "OIDC_AUDIENCE", "OIDC_JWKS_URL", "OIDC_AUTHORIZATION_URL", "OIDC_TOKEN_URL",
-                 "OIDC_SCOPE_CLAIM", "OIDC_REFRESH_WINDOW_SECONDS"):
-        monkeypatch.delenv(name, raising=False)
+                 "OIDC_SSL_CA"):
+        monkeypatch.setenv(name, "")
+    monkeypatch.setenv("OIDC_SCOPE_CLAIM", "scope")
+    monkeypatch.setenv("OIDC_REFRESH_WINDOW_SECONDS", "60")
     get_settings.cache_clear()
     engine_for.cache_clear()
     yield

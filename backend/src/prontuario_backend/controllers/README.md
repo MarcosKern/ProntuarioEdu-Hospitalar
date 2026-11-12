@@ -2,6 +2,8 @@
 
 ## Responsabilidade
 
+`admin.py::require_system_admin` exige identidade e escopos verificados e confirma o usuário/perfil/permissão no banco da aplicação antes de autorizar uma operação administrativa.
+
 Recebem a chamada encaminhada pelas rotas e coordenam a operação.
 
 ## Como dividir o trabalho
