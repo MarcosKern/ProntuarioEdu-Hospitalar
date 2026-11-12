@@ -10,7 +10,7 @@ from starlette.responses import JSONResponse, Response
 
 from prontuario_backend.config.http import SecurityMiddleware
 from prontuario_backend.config.settings import get_settings
-from prontuario_backend.config.swagger import configure_swagger_auth, swagger_config
+from prontuario_backend.config.swagger import swagger_config
 from prontuario_backend.routes.api import router
 
 
@@ -38,7 +38,6 @@ def create_app():
         return JSONResponse({"error": {"code": "validation_error", "request_id": request.state.request_id}}, 422)
 
     app.include_router(router)
-    configure_swagger_auth(app, settings)
     if not production:
         @app.get("/metrics", include_in_schema=False)
         def metrics():

@@ -1,6 +1,6 @@
 # Back-end Python com MVC
 
-Para iniciar com o usuário **`admin` do ProntuarioEdu**, perfil `ADMINISTRADOR` e login Keycloak de desenvolvimento, consulte [primeiro administrador da aplicação](ADMINISTRADOR.md). O cadastro é explícito; a senha temporária fica em arquivo privado e exige troca no primeiro acesso.
+Para iniciar com o usuário **`admin` do ProntuarioEdu**, perfil `ADMINISTRADOR` e login na própria API, consulte [primeiro administrador](ADMINISTRADOR.md). O cadastro é explícito e a senha fica somente como hash no MySQL.
 
 > **Banco padrão: MySQL externo.** No Compose base, configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há fallback automático para banco local.
 
@@ -114,36 +114,21 @@ O arquivo [`config/swagger.py`](src/prontuario_backend/config/swagger.py) centra
 | --- | --- |
 | `/docs` | Interface Swagger, disponível em desenvolvimento e testes |
 | `/openapi.json` | Contrato para clientes, Postman e validação automatizada |
-| `/docs/oauth2-redirect` | Retorno técnico do login OAuth2 iniciado pelo Swagger |
+| `/api/v1/auth/token` | Emissão do JWT após login na própria API |
 
-O Swagger usa a mesma origem do navegador para chamar a API. Assim, no Codespace, as requisições continuam no endereço HTTPS encaminhado pelo GitHub. Autorizações não são persistidas pelo Swagger no armazenamento do navegador. Em produção, a interface, o contrato e o retorno OAuth2 ficam desabilitados.
+O Swagger usa a mesma origem do navegador para chamar a API. Assim, no Codespace, as requisições continuam no endereço HTTPS encaminhado pelo GitHub. Autorizações não são persistidas pelo Swagger no armazenamento do navegador. Em produção, a interface e o contrato ficam desabilitados.
 
-O botão **Authorize** solicita o token ao provedor com Authorization Code + PKCE S256. O client ID público é preenchido por `SWAGGER_CLIENT_ID`, e `identity:read` já vem pré-selecionado. A troca do código usa `POST` em `OIDC_TOKEN_URL`; após a autorização, o Swagger envia o access token como Bearer nas operações protegidas. Veja o [passo a passo da chamada de token](AUTHENTICATION.md#solicitar-o-token-pelo-swagger).
+O botão **Authorize** solicita o token em `POST /api/v1/auth/token` na própria API, usando usuário e senha. O Swagger envia o access token como Bearer nas operações protegidas. Veja o [passo a passo](AUTHENTICATION.md#solicitar-o-token-pelo-swagger).
 
 ### Usar o Swagger em desenvolvimento
 
-1. Configure o ambiente com `APP_ENV=development` e inicie o Back-end pelo [roteiro do Codespace](#rodar-o-contêiner-de-desenvolvimento-e-acessar-a-api) ou pelos modos locais deste README. A execução atual da API exige MySQL de desenvolvimento autorizado; a configuração do Swagger não importa o banco ou a arquitetura enviados.
-2. Abra a porta encaminhada do Codespace e acrescente `/docs`. No modo local, use `http://127.0.0.1:8000/docs`. Mantenha o host de acesso em `ALLOWED_HOSTS`.
-3. Expanda uma operação para consultar descrição, parâmetros, schema e códigos de resposta. Clique em **Try it out** e depois em **Execute** para realizar uma chamada real. A rota `/health` consulta o banco; ela não exige token.
-4. Para operações protegidas, configure o provedor real conforme a próxima seção e use **Authorize**. O login na porta privada do GitHub permite acessar o Codespace, mas não autentica o usuário da API.
+1. Configure `.env`, `DATABASE_URL` e `AUTH_JWT_SECRET` conforme [autenticação](AUTHENTICATION.md#configuração).
+2. Inicie a API e o MySQL autorizado; crie o [administrador](ADMINISTRADOR.md) explicitamente.
+3. Abra a porta da API com `/docs`. Localmente: `http://127.0.0.1:8000/docs`. No Codespace, mantenha o hostname exato em `ALLOWED_HOSTS` e a porta privada.
+4. Use **Authorize** com usuário/senha e `identity:read`. Para o administrador, marque também `admin:access`.
+5. Execute `GET /api/v1/me`, `GET /api/v1/auth/session` ou `GET /api/v1/admin/me`. A autorização não fica persistida ao recarregar a página.
 
-Não há novo endpoint clínico, conta padrão ou geração de tokens de demonstração. Sem autenticação, `/api/v1/me` e `/api/v1/auth/session` respondem HTTP 401. O [guia de autenticação e validade do acesso](AUTHENTICATION.md) descreve a função executada antes dos endpoints, os escopos e o fluxo de renovação no provedor.
-
-### Preparar o botão Authorize com OAuth2 e PKCE
-
-Os campos `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_JWKS_URL`, `OIDC_AUTHORIZATION_URL` e `OIDC_TOKEN_URL` devem receber os valores reais fornecidos pelo responsável pelo provedor. Eles já são necessários para o fluxo de autenticação existente. Enquanto o provedor não estiver configurado, o Swagger pode ser visualizado, mas o botão Authorize não realiza login funcional.
-
-Para preparar o cliente do Swagger no provedor:
-
-1. Registre um **cliente público**, com Authorization Code e **PKCE S256**, destinado ao Swagger de desenvolvimento. Esse fluxo no navegador não usa client secret.
-2. Cadastre como redirect URI o endereço exato pelo qual você abre o Swagger, seguido de `/docs/oauth2-redirect`. Para acesso local pela porta padrão, é `http://127.0.0.1:8000/docs/oauth2-redirect`. No Codespace, copie a origem HTTPS da aba **Ports** e acrescente esse caminho; não use o endereço interno do contêiner. O retorno local depende de o provedor permitir HTTP de loopback para desenvolvimento.
-3. Se o provedor exigir uma lista de origens permitidas para a troca do código, inclua a origem do Swagger na configuração do provedor. A troca de tokens ocorre pelo navegador. Não é preciso liberar CORS da API para o Swagger que usa sua própria origem.
-4. Copie o **client ID público** para `SWAGGER_CLIENT_ID` no `.env` do Back-end. O campo está previsto em [`.env.example`](.env.example) e pode ficar vazio enquanto o login não for configurado. O client ID não é necessariamente igual ao `OIDC_AUDIENCE`, que identifica a audiência aceita pela API.
-5. Reinicie a execução Python ou recrie o serviço Compose para carregar as variáveis. No Compose, use `docker compose up -d --force-recreate --wait`, com os dois arquivos `-f` se estiver usando o override TLS.
-6. Cadastre e conceda no provedor o escopo `identity:read`, incluindo-o no claim `scope` do access token. Se o provedor usa `scp`, configure `OIDC_SCOPE_CLAIM=scp`.
-7. Reabra `/docs`, clique em **Authorize**, selecione `identity:read` e conclua o login no provedor real. Depois, execute `GET /api/v1/me` para verificar a identidade autenticada, ou `GET /api/v1/auth/session` para consultar a expiração e a recomendação de renovação. O provedor precisa emitir um access token JWT RS256, com `kid`, issuer e audience configurados, além de `exp`, `sub` e o escopo exigido. O login e a renovação reais dependem desse provedor.
-
-Não coloque client secret em `.env` para o Swagger, no JSON da documentação ou no navegador. A pré-configuração não registra o cliente automaticamente no provedor. Se o hostname do Codespace mudar, atualize a redirect URI no provedor e `ALLOWED_HOSTS` no Back-end.
+Não há client ID, client secret, callback ou realm. Sem token, as rotas protegidas respondem 401. `/health` continua público. Renovação e logout são rotas da própria API descritas no [guia de autenticação](AUTHENTICATION.md).
 
 ### Exemplo: configurar a documentação de um endpoint
 
@@ -164,7 +149,7 @@ from prontuario_backend.views.auth import IdentityResponse
     tags=["Autenticação"],
     summary="Consultar a identidade autenticada",
     operation_id="get_current_identity",
-    description="Valida o access token OIDC e retorna seu subject. Exige Bearer e o escopo identity:read.",
+    description="Valida o JWT e a sessão no MySQL e retorna seu subject. Exige Bearer e o escopo identity:read.",
     responses={
         status: ERROR_RESPONSES[status]
         for status in (401, 403, 405, 413, 429, 500, 503)
@@ -194,11 +179,11 @@ Para conferir esta pré-configuração sem banco, de `backend` e sem `MYSQL_TEST
 .venv/bin/python -m pytest -q tests/contract/test_swagger.py
 ```
 
-Os testes verificam acesso pelo hostname do Codespace, retorno OAuth2 na mesma origem, PKCE, configuração pública do cliente e manutenção da exigência de autenticação. O teste de produção em `tests/integration/test_security.py` também confere que a documentação e o retorno OAuth2 respondem 404.
+Os testes verificam o hostname do Codespace, a URL local de tokens e a exigência de autenticação. O teste de produção confere que a documentação responde 404.
 
 Em `tests/unit/`, validar texto vazio, coordenação e respostas. Em `tests/integration/`, verificar acesso negado sem gravação e persistência/transação no banco de teste. Em `tests/contract/`, verificar respostas e OpenAPI. A seção de ambiente descreve os testes iniciais implementados; os testes do exemplo clínico continuam futuros.
 
-As instruções abaixo descrevem o ambiente inicial implementado com FastAPI, SQLAlchemy e MySQL. O provedor real de autenticação ainda precisa ser configurado.
+As instruções abaixo descrevem o ambiente inicial implementado com FastAPI, SQLAlchemy e MySQL. O login local exige a chave JWT e o cadastro explícito no schema MySQL.
 
 ## Configurar o ambiente de desenvolvimento
 
@@ -234,7 +219,7 @@ Edite `.env` privadamente. Configure `DATABASE_URL` para o MySQL externo e, quan
 
 `APP_ENV=development` habilita Swagger. `ALLOWED_HOSTS` e `CORS_ORIGINS` usam arrays JSON; o padrão aceita acesso local e nenhuma origem Web adicional. O `.env` é carregado automaticamente pela aplicação e pelo Alembic. Variáveis já exportadas no terminal têm precedência: remova valores antigos que apontem para outro banco.
 
-A API consegue iniciar sem provedor OIDC em desenvolvimento, mas nenhuma autenticação real funciona até preencher os cinco campos `OIDC_*`. Sem token, `/api/v1/me` retorna 401; com token e provedor ausente, retorna 503. Não há contas ou credenciais padrão. Consulte [segurança e operação](SECURITY.md).
+Configure `AUTH_JWT_SECRET` conforme [autenticação](AUTHENTICATION.md#configuração). Sem essa chave, a API inicia em desenvolvimento, mas o login responde 503. Sem Bearer, `/api/v1/me` responde 401. O administrador deve ser criado explicitamente e não possui senha padrão. Consulte [segurança e operação](SECURITY.md).
 
 ### 3. Escolher um modo de execução
 
@@ -310,7 +295,7 @@ Resultado esperado: `{"status":"ok","database":"ok"}`. Isso confirma uma consult
 | `/api/v1/me` sem token | 401; não é falha de instalação |
 | `/metrics` | Métricas de desenvolvimento; não é endpoint público de produção |
 
-A API ainda não possui o endpoint de anotação do pseudocódigo acima. Nenhum prontuário ou usuário de demonstração é carregado. `/health` não comprova um login OIDC completo; isso precisa ser validado com o provedor real.
+A API ainda não possui o endpoint de anotação do pseudocódigo acima. Nenhum prontuário ou usuário de demonstração é carregado. `/health` não comprova login; valide usuário/senha e uma chamada protegida pelo Swagger.
 
 ### 5. Executar testes e verificações
 
@@ -337,7 +322,7 @@ docker build --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt -t pron
 docker compose up -d --no-build --wait
 ```
 
-O caminho é específico do host; adapte para um bundle confiável existente no seu sistema. O Dockerfile mantém TLS habilitado e usa o certificado apenas no build. Isso não instala a CA para o MySQL ou OIDC em runtime. Não remova `--no-build` da segunda linha nesse fluxo: um novo build pelo Compose não receberia o segredo automaticamente.
+O caminho é específico do host; adapte para um bundle confiável existente no seu sistema. O Dockerfile mantém TLS habilitado e usa o certificado apenas no build. Isso não instala a CA para o MySQL em runtime. Não remova `--no-build` da segunda linha nesse fluxo: um novo build pelo Compose não receberia o segredo automaticamente.
 
 ### Problemas frequentes
 
@@ -348,10 +333,10 @@ O caminho é específico do host; adapte para um bundle confiável existente no 
 | Erro de CA no Docker | Arquivo montado no contêiner e caminho interno correto em `MYSQL_SSL_CA`; a CA do build não substitui essa montagem |
 | 400 ao acessar a API | Host solicitado não está em `ALLOWED_HOSTS`; não liberar wildcard como solução |
 | Porta ocupada | Parar a execução anterior ou usar a opção de porta correspondente ao modo escolhido |
-| 401/503 em `/api/v1/me` | Conferir token/provedor; não criar bypass de autenticação |
+| 401/503 em `/api/v1/me` | Conferir token, sessão e chave JWT; não criar bypass de autenticação |
 | Compose não saudável | Consultar logs da API e Redis; `/health` exige banco acessível e startup exige migrações concluídas |
 
-Não use este Compose com reload como implantação de produção. Retenção, backups, usuário de banco mínimo e configuração OIDC real estão detalhados em [SECURITY.md](SECURITY.md) e [MYSQL.md](MYSQL.md).
+Não use este Compose com reload como implantação de produção. Retenção, backups, usuário de banco mínimo e configuração segura do login estão detalhados em [SECURITY.md](SECURITY.md) e [MYSQL.md](MYSQL.md).
 
 ## Dependências de execução e desenvolvimento
 
@@ -412,7 +397,7 @@ Abra esse arquivo no editor e mantenha `APP_ENV=development` para disponibilizar
 
 Você pode fornecer `DATABASE_URL` por segredo do GitHub Codespaces em vez de gravá-la no `.env`. Nesse caso, a variável recebida pelo terminal tem precedência na interpolação do Compose. O serviço usa esse valor explicitamente. Para os demais campos deste roteiro, edite o `.env`: o Compose carrega esse arquivo no serviço, mas não encaminha automaticamente todas as variáveis do terminal.
 
-Não versione `.env`, certificados privados ou credenciais. OIDC pode ser configurado depois; sem provedor e token válidos, as rotas protegidas continuam bloqueadas.
+Não versione `.env`, certificados privados ou credenciais. Sem chave JWT, conta e token válidos, as rotas protegidas continuam bloqueadas.
 
 #### 3. Autorizar o endereço encaminhado do Codespace
 
@@ -481,7 +466,7 @@ Acrescente os caminhos abaixo ao endereço encaminhado:
 | `/openapi.json` | Contrato OpenAPI, que pode ser importado no Postman |
 | `/api/v1/me` | Rota protegida; sem token, HTTP 401 é esperado |
 
-O GitHub pode solicitar login para acessar a porta privada. Esse login permite atravessar o túnel do Codespace; ele não substitui a autenticação OAuth2/OIDC da aplicação. Para usar o Postman fora do Codespace, é necessário também autenticar o acesso ao túnel privado conforme o cliente; importar o OpenAPI não configura essa autenticação. Não torne a porta pública para contornar o login.
+O GitHub pode solicitar login para acessar a porta privada. Esse login permite atravessar o túnel do Codespace; ele não substitui a autenticação JWT da aplicação. Para usar o Postman fora do Codespace, é necessário também autenticar o acesso ao túnel privado conforme o cliente; importar o OpenAPI não configura essa autenticação. Não torne a porta pública para contornar o login.
 
 Se aparecer `400 Invalid host header`, compare o hostname do endereço encaminhado com `ALLOWED_HOSTS`. Corrija o `.env` e recrie o serviço conforme o próximo passo. Abrir um novo Codespace pode mudar esse hostname.
 

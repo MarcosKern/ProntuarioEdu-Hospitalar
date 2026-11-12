@@ -22,10 +22,7 @@ from prontuario_backend.models.security import AuditEvent, RecordPermission
 def production_settings(**changes):
     values = dict(app_env="production", database_url="mysql+pymysql://unused@localhost/review",
                   mysql_ssl_ca=certifi.where(), redis_url="rediss://localhost:6379/0",
-                  oidc_issuer="https://identity.example.test", oidc_audience="review",
-                  oidc_jwks_url="https://identity.example.test/jwks",
-                  oidc_authorization_url="https://identity.example.test/authorize",
-                  oidc_token_url="https://identity.example.test/token", _env_file=None)
+                  auth_jwt_secret="isolated-test-signing-key-that-is-at-least-32-bytes", _env_file=None)
     return Settings(**(values | changes))
 
 

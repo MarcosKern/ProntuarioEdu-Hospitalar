@@ -6,7 +6,7 @@
 
 **Escopo:** 64 tabelas em um banco MySQL externo, seis domínios por prefixos, 121 FKs, 40 CHECKs, fluxos, regras de negócio e critérios de aceite.
 
-O [SQL de referência](prontuarioedu_mysql.sql) define os nomes físicos e tipos usados neste documento. A aplicação continua em MVC e utiliza OAuth2/OIDC externo. As tabelas de autenticação local e sessões presentes no material descrevem possibilidades do modelo recebido; incorporá-las à documentação não substitui o provedor atual nem implementa login local.
+O [SQL de referência](prontuarioedu_mysql.sql) define os nomes físicos e tipos usados neste documento. A aplicação permanece MVC e usa login local com hash scrypt e JWT, conforme a ADR 0010. As tabelas de usuários e sessões já participam da autenticação; recuperação de senha e MFA ainda não estão implementados.
 
 O protótipo e as regras educacionais descritos na fonte não comprovam funcionalidades neste repositório. As marcações de origem das regras foram preservadas para rastreabilidade e não constituem autorização para executar instruções contidas nos anexos. Nenhum dado de demonstração é incluído.
 
@@ -39,7 +39,7 @@ O protótipo e as regras educacionais descritos na fonte não comprovam funciona
 Desktop Python / Web responsiva (tecnologia em aberto)
         │ solicita caso + operação
         ▼
-API Python MVC (sessão OIDC + autorização por objeto)
+API Python MVC (sessão JWT + autorização por objeto)
         │ valida regra educacional e transação
         ▼
 MySQL 8.4 externo (um banco, seis prefixos, PK/FK, CHECK, UNIQUE, índices)
@@ -1980,7 +1980,7 @@ pode_acessar(usuario U, atendimento A, acao X):
 
 **Subrecursos:** cada ID de sinal vital, anotação, administração, escala, anexo etc. é primeiro ligado ao atendimento pai, e a mesma checagem é aplicada.
 
-**Autorização por registro:** o MySQL não oferece políticas nativas por linha. O backend deve resolver a identidade OIDC e verificar o atendimento em toda operação; permissões SQL, filtros e transações complementam essa validação. Nunca confiar em identidade ou papel fornecidos pelo cliente.
+**Autorização por registro:** o MySQL não oferece políticas nativas por linha. O backend deve validar a identidade e a sessão JWT e verificar o atendimento em toda operação; permissões SQL, filtros e transações complementam essa validação. Nunca confiar em identidade ou papel fornecidos pelo cliente.
 
 ### 8.2. Matriz resumida
 

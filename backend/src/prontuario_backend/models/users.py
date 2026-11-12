@@ -1,4 +1,4 @@
-"""Cadastro e perfil do sistema; o login é realizado pelo provedor OIDC."""
+"""Cadastro, permissões e sessões de autenticação no MySQL."""
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
@@ -19,7 +19,7 @@ def system_admin(connection, subject):
         JOIN cadastro__perfis p ON p.id = up.perfil_id
         JOIN cadastro__perfil_permissao pp ON pp.perfil_id = p.id
         JOIN cadastro__permissoes permission ON permission.id = pp.permissao_id
-        WHERE u.id = :subject AND u.provedor = 'keycloak' AND u.ativo = 1
+        WHERE u.id = :subject AND u.provedor = 'local' AND u.ativo = 1
           AND (u.bloqueado_ate IS NULL OR u.bloqueado_ate <= UTC_TIMESTAMP(6))
           AND up.revogado_em IS NULL AND up.unidade_id IS NULL
           AND p.codigo = 'ADMINISTRADOR' AND permission.codigo = 'USUARIO_GERENCIAR'
@@ -28,24 +28,35 @@ def system_admin(connection, subject):
     return dict(row) if row else None
 
 
-def bootstrap_system_admin(engine, subject):
+def bootstrap_system_admin(engine, subject, password_hash, *, convert_existing=False):
     """Operação explícita, transacional e idempotente; não cria tabelas nem redefine senhas."""
     if str(UUID(subject)) != subject:
         raise ValueError("Identificador do administrador inválido")
+    if not isinstance(password_hash, str) or not password_hash.startswith("scrypt$"):
+        raise ValueError("O cadastro exige um hash scrypt, nunca a senha em texto")
     with engine.begin() as connection:
         existing = connection.execute(text(
-            "SELECT id, login, provedor FROM cadastro__usuarios WHERE id = :id OR login = 'admin' FOR UPDATE"
+            "SELECT id, login, provedor, ativo FROM cadastro__usuarios WHERE id = :id OR login = 'admin' FOR UPDATE"
         ), {"id": subject}).mappings().all()
         if existing:
-            if len(existing) != 1 or existing[0]["id"] != subject or existing[0]["login"] != "admin" or existing[0]["provedor"] != "keycloak":
+            if len(existing) != 1 or existing[0]["id"] != subject or existing[0]["login"] != "admin":
                 raise ValueError("Já existe um usuário admin ou vínculo diferente; o cadastro foi preservado")
+            if existing[0]["provedor"] != "local":
+                if not convert_existing or existing[0]["ativo"] != 1:
+                    raise ValueError("Conta externa preservada; use a conversão explícita para login local")
+                connection.execute(text("UPDATE cadastro__usuarios SET provedor='local', hash_senha=:hash, senha_alterada_em=UTC_TIMESTAMP(6) WHERE id=:id"),
+                                   {"hash": password_hash, "id": subject})
+                connection.execute(text("""
+                    INSERT INTO audit_events (id, occurred_at, subject, record_id, action, outcome, request_id)
+                    VALUES (:event, UTC_TIMESTAMP(6), :user, :user, 'local_admin_conversion', 'allowed', :request)
+                """), {"event": str(uuid4()), "user": subject, "request": str(uuid4())})
             if not system_admin(connection, subject):
                 raise ValueError("O administrador existente está inativo ou sem permissão; nenhuma concessão foi refeita")
             return {"created": False, "user_id": subject, "login": "admin"}
         connection.execute(text("""
-            INSERT INTO cadastro__usuarios (id, nome, login, provedor, ativo)
-            VALUES (:id, 'Administrador do sistema', 'admin', 'keycloak', 1)
-        """), {"id": subject})
+            INSERT INTO cadastro__usuarios (id, nome, login, provedor, ativo, hash_senha, senha_alterada_em)
+            VALUES (:id, 'Administrador do sistema', 'admin', 'local', 1, :hash, UTC_TIMESTAMP(6))
+        """), {"id": subject, "hash": password_hash})
         profile = connection.execute(text("SELECT id FROM cadastro__perfis WHERE codigo = 'ADMINISTRADOR'")).scalar_one_or_none()
         if not profile:
             profile = str(uuid4())
@@ -79,3 +90,74 @@ def bootstrap_system_admin(engine, subject):
             VALUES (:id, UTC_TIMESTAMP(6), :user, :user, 'bootstrap_admin', 'allowed', :request)
         """), {"id": str(uuid4()), "user": subject, "request": str(uuid4())})
         return {"created": True, "user_id": subject, "login": "admin"}
+
+
+def account_for_login(connection, login):
+    return connection.execute(text("""
+        SELECT id, login, hash_senha, ativo, provedor,
+               (bloqueado_ate IS NOT NULL AND bloqueado_ate > UTC_TIMESTAMP(6)) AS bloqueado
+        FROM cadastro__usuarios WHERE login=:login FOR UPDATE
+    """), {"login": login}).mappings().first()
+
+
+def login_failure(connection, subject):
+    connection.execute(text("""
+        UPDATE cadastro__usuarios SET
+          bloqueado_ate=CASE WHEN falhas_login+1 >= 5 THEN TIMESTAMPADD(MINUTE, 15, UTC_TIMESTAMP(6)) ELSE bloqueado_ate END,
+          falhas_login=LEAST(falhas_login+1, 5)
+        WHERE id=:id
+    """), {"id": subject})
+
+
+def create_login_session(connection, subject, refresh_hash, expires, session_id):
+    connection.execute(text("""
+        UPDATE cadastro__usuarios SET falhas_login=0, bloqueado_ate=NULL, ultimo_login_em=UTC_TIMESTAMP(6) WHERE id=:id
+    """), {"id": subject})
+    connection.execute(text("""
+        INSERT INTO cadastro__sessoes_usuario (id, usuario_id, refresh_token_hash, expira_em, ultimo_uso_em)
+        VALUES (:id, :user, :hash, :expires, UTC_TIMESTAMP(6))
+    """), {"id": session_id, "user": subject, "hash": refresh_hash, "expires": expires})
+
+
+def active_session(connection, session_id, subject=None, *, lock=False):
+    query = """
+        SELECT s.id, s.usuario_id, s.refresh_token_hash, s.expira_em
+        FROM cadastro__sessoes_usuario s JOIN cadastro__usuarios u ON u.id=s.usuario_id
+        WHERE s.id=:id AND s.revogado_em IS NULL AND s.expira_em > UTC_TIMESTAMP(6)
+          AND u.ativo=1 AND u.provedor='local'
+          AND (u.bloqueado_ate IS NULL OR u.bloqueado_ate <= UTC_TIMESTAMP(6))
+    """
+    params = {"id": session_id}
+    if subject is not None:
+        query += " AND s.usuario_id=:subject"
+        params["subject"] = subject
+    if lock:
+        query += " FOR UPDATE"
+    return connection.execute(text(query), params).mappings().first()
+
+
+def rotate_refresh(connection, session_id, refresh_hash):
+    connection.execute(text("""
+        UPDATE cadastro__sessoes_usuario SET refresh_token_hash=:hash, ultimo_uso_em=UTC_TIMESTAMP(6) WHERE id=:id
+    """), {"id": session_id, "hash": refresh_hash})
+
+
+def revoke_session(connection, session_id, subject):
+    connection.execute(text("""
+        UPDATE cadastro__sessoes_usuario SET revogado_em=UTC_TIMESTAMP(6)
+        WHERE id=:id AND usuario_id=:user AND revogado_em IS NULL
+    """), {"id": session_id, "user": subject})
+
+
+def change_password(connection, subject, password_hash):
+    connection.execute(text("""
+        UPDATE cadastro__usuarios SET hash_senha=:hash, senha_alterada_em=UTC_TIMESTAMP(6) WHERE id=:id AND provedor='local'
+    """), {"id": subject, "hash": password_hash})
+    connection.execute(text("""
+        UPDATE cadastro__sessoes_usuario SET revogado_em=UTC_TIMESTAMP(6) WHERE usuario_id=:id AND revogado_em IS NULL
+    """), {"id": subject})
+
+
+def account_password(connection, subject):
+    return connection.execute(text("SELECT hash_senha FROM cadastro__usuarios WHERE id=:id AND ativo=1 AND provedor='local' FOR UPDATE"),
+                              {"id": subject}).scalar_one_or_none()

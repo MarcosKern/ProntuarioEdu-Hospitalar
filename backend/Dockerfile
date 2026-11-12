@@ -16,6 +16,7 @@ RUN adduser -D -u 1000 app
 COPY --chown=app:app src ./src
 COPY --chown=app:app migrations ./migrations
 COPY --chown=app:app alembic.ini ./
+COPY --chown=app:app scripts/create_admin.py ./scripts/create_admin.py
 USER app
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

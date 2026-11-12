@@ -2,7 +2,7 @@
 
 ## Responsabilidade
 
-`users.py` consulta o cadastro administrativo existente no schema MySQL e oferece o bootstrap explícito da primeira conta. Não cria tabelas, pacientes ou profissionais e não reativa concessões revogadas. A senha é gerenciada no provedor de identidade; não é persistida nesse cadastro.
+`users.py` consulta o cadastro administrativo existente no schema MySQL e oferece o bootstrap explícito da primeira conta. Não cria tabelas, pacientes ou profissionais e não reativa concessões revogadas. O cadastro persiste apenas o hash scrypt da senha. As sessões guardam hash do refresh token, expiração e revogação.
 
 Representam os dados do sistema, suas regras de validade e operações de persistência usando o banco/ORM que for escolhido.
 

@@ -22,6 +22,7 @@ services:
     volumes:
       - ./src:/app/src:ro
       - ./migrations:/app/migrations:ro
+      - ./scripts/create_admin.py:/app/scripts/create_admin.py:ro
     command: sh -c 'python -m alembic upgrade head && python -m uvicorn prontuario_backend.main:app --host 0.0.0.0 --port 8000 --reload --no-access-log --no-proxy-headers'
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]

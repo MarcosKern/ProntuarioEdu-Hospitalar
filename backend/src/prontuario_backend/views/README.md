@@ -14,4 +14,4 @@ Cobrir a responsabilidade com testes: regras isoladas em `backend/tests/unit/`, 
 
 O ambiente inicial usa FastAPI e SQLAlchemy/MySQL externo. Os arquivos Python desta pasta participam da API de desenvolvimento; funcionalidades clínicas ainda não foram implementadas.
 
-`auth.py` define `IdentityResponse` e `SessionResponse`: identidade pública, expiração e indicação de renovação. As respostas não incluem tokens, refresh tokens ou outros claims privados do provedor.
+`auth.py` define identidade, validade da sessão, entradas de refresh/troca de senha e resposta de tokens. Somente login e renovação retornam access/refresh tokens; os demais contratos não expõem credenciais ou hashes.

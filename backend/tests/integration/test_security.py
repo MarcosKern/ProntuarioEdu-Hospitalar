@@ -70,9 +70,7 @@ def test_production_hides_docs_and_metrics(monkeypatch):
     monkeypatch.setenv("REDIS_URL", "rediss://localhost:6379/0")
     import certifi
     monkeypatch.setenv("MYSQL_SSL_CA", certifi.where())
-    for key in ("OIDC_ISSUER", "OIDC_JWKS_URL", "OIDC_AUTHORIZATION_URL", "OIDC_TOKEN_URL"):
-        monkeypatch.setenv(key, "https://identity.example.test/endpoint")
-    monkeypatch.setenv("OIDC_AUDIENCE", "test-only")
+    monkeypatch.setenv("AUTH_JWT_SECRET", "isolated-test-signing-key-that-is-at-least-32-bytes")
     get_settings.cache_clear()
     with TestClient(create_app(), base_url="http://localhost") as client:
         for path in ("/docs", "/docs/oauth2-redirect", "/openapi.json", "/metrics"):

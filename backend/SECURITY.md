@@ -2,7 +2,7 @@
 
 ## Iniciar o ambiente
 
-Siga [MySQL externo](MYSQL.md) para configurar DATABASE_URL, CA, migrações e testes. Compose não inicia servidor de banco. O provedor OIDC continua externo e precisa ser configurado.
+Siga [MySQL externo](MYSQL.md) para configurar DATABASE_URL, CA, migrações e testes. O Compose base usa banco externo; o modo opt-in pode iniciar MySQL local. O login é feito na própria API, conforme [autenticação](AUTHENTICATION.md).
 
 ## Configuração
 
@@ -10,15 +10,16 @@ Siga [MySQL externo](MYSQL.md) para configurar DATABASE_URL, CA, migrações e t
 
 O servidor ignora headers de proxy por padrão. Não confie livremente em X-Forwarded-For. Na implantação, limite acesso direto à API, configure proxies confiáveis e TLS no gateway; dimensione limites por usuário/origem conforme tráfego real, sobretudo quando vários usuários compartilham IP. Configure também timeout de leitura e limites no gateway.
 
-Em produção a validação exige MySQL com CA confiável configurada, Redis via `rediss://` e todos os endereços/identificadores OIDC. Certificado e hostname do Redis são verificados; uma CA privada pode ser definida em REDIS_SSL_CA. `authenticate_request` executa antes dos endpoints protegidos: aceita access tokens RS256 com `kid`, verifica assinatura, issuer, audience, expiração e subject, e exige todos os escopos declarados em `Security`. `/api/v1/me` e `/api/v1/auth/session` exigem `identity:read`; permissões não são obtidas de papéis ou campos enviados pelo cliente.
+Em produção a validação exige MySQL com CA confiável, Redis via `rediss://` e `AUTH_JWT_SECRET` aleatório de pelo menos 32 bytes. Certificado e hostname do Redis são verificados. `authenticate_request` aceita somente JWT HS256 com assinatura, emissor, audiência, expiração, IDs e escopos válidos. Consulta a sessão e o usuário no MySQL em cada requisição, falhando com 503 se a dependência estiver indisponível.
 
-`GET /api/v1/auth/session` informa a validade do access token e recomenda renovação quando restam até `OIDC_REFRESH_WINDOW_SECONDS` (60 por padrão). Token expirado recebe 401, escopo insuficiente recebe 403 e indisponibilidade do provedor recebe 503. O aplicativo renova tokens no provedor externo; a API não recebe refresh tokens nem emite credenciais. Consulte [autenticação](AUTHENTICATION.md) para configuração, contratos e uso da dependência.
+Senhas têm hash scrypt com salt aleatório (N=32768, r=8, p=3), sem arquivo de senha inicial. Refresh tokens aleatórios são persistidos somente como hash SHA-256 e rotacionados; o anterior deixa de funcionar. Cinco tentativas de senha incorreta bloqueiam a conta por 15 minutos. Logout revoga a sessão e troca de senha revoga todas, bloqueando access tokens já emitidos. O limitador HTTP também se aplica ao login.
 
-Revogação imediata e logout global dependem do provedor e da estratégia acordada; JWT já emitido pode permanecer válido até expirar. A consulta de validade não comprova sessão ativa no provedor e não faz introspecção online. Use duração curta e estratégia de revogação/introspecção se exigida pelo negócio. Não há provedor implantado automaticamente.
+`GET /api/v1/auth/session` informa expiração e recomenda renovação com `AUTH_REFRESH_WINDOW_SECONDS`. Token/sessão inválida recebe 401; escopo insuficiente, 403; configuração/banco indisponível, 503. Os clientes renovam pelo endpoint local e não devem gravar tokens em logs, URLs ou Git. Recuperação de senha, MFA e armazenamento seguro nos futuros clientes ainda exigem implementação própria.
 
 ## Permissões e auditoria
 
-O [primeiro administrador](ADMINISTRADOR.md) é criado por um comando explícito de desenvolvimento em `cadastro__usuarios`, com vínculo ao `sub` Keycloak, perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`. `controllers/admin.py` verifica o cadastro ativo e a concessão após validar os escopos do token. A conta não recebe bypass de prontuários. Senha temporária, realm renderizado e chaves TLS ficam em `.local/auth`, ignorado pelo Git/build. O acesso HTTPS ao JWKS usa `OIDC_SSL_CA` quando configurada, mantendo verificação do certificado e hostname.
+O [primeiro administrador](ADMINISTRADOR.md) é criado por prompt explícito em `cadastro__usuarios`, com senha em hash, perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`. `controllers/admin.py` verifica o cadastro e a concessão ativa após validar token e sessão. Contas externas só são convertidas explicitamente, mantendo ID e concessões; revogações não são restauradas. A conta não recebe bypass de prontuários. Configuração JWT/conexão fica em variáveis privadas ou gerenciador de segredos; não há realm, certificado próprio de identidade ou cofre adicional.
+
 
 `controllers/permissions.py::require_record_access` exige concessão explícita em `record_permissions`, sem bypass administrativo implícito. Use identidade validada pelo servidor, nunca campos do corpo da requisição. Falha de banco/auditoria bloqueia a operação. Nenhum endpoint clínico foi criado enquanto a regra de perfis não for informada.
 
@@ -40,13 +41,14 @@ Use os procedimentos de [backup MySQL remoto](MYSQL.md#backup-remoto-e-recupera�
 
 ## Verificação automática
 
-CI em `.github/workflows/backend.yml` executa Ruff, pytest com MySQL isolado, pip-audit e Trivy para vulnerabilidades e segredos nas imagens da API e do Keycloak. As duas imagens são analisadas mesmo se a primeira apresentar achados; falha em qualquer scan reprova o job `image`, mantendo o bloqueio de HIGH/CRITICAL. Os checks continuam `test` e `image`. Não usa pull_request_target nem publica imagens. Credencial fixa do serviço MySQL de CI é efêmera e exclusiva do runner; não é uma conta da aplicação. Os testes não carregam dados na aplicação.
+CI em `.github/workflows/backend.yml` executa Ruff, pytest com MySQL isolado, pip-audit e Trivy para vulnerabilidades e segredos da imagem da API. HIGH/CRITICAL reprovam o job `image`; os checks continuam `test` e `image`. O servidor de identidade e sua cadeia Java foram removidos conforme escolha do responsável; não há imagem Keycloak em uso ou no build. Não usa pull_request_target nem publica imagens. Credenciais fixas do MySQL de CI são efêmeras, exclusivas do runner. Os testes não carregam dados na aplicação.
+
 
 Local: `python -m pytest -q`, `python -m ruff check src tests scripts` e `python -m pip_audit -r requirements.txt` e `python -m pip_audit -r requirements-dev.txt`. O teste MySQL exige confirmação `MYSQL_TEST_ALLOW_RESET` igual ao nome exato do banco e `MYSQL_TEST_URL` apontando a banco descartável com nome iniciado por `prontuario_test`; sem isso é explicitamente pulado.
 
 ## Produção: requisitos ainda externos
 
-Configurar provedor OIDC e permissões reais; TLS e gateway; segredos gerenciados; usuários de banco mínimos separados; Redis privado com autenticação/TLS; métricas privadas e alertas; retenção aprovada e rotina de backup. A infraestrutura implementada não significa que o produto esteja liberado para dados clínicos reais.
+Configurar políticas de acesso e gestão/rotação da chave JWT; TLS e gateway; segredos gerenciados; usuários de banco mínimos separados; Redis privado com autenticação/TLS; métricas privadas e alertas; retenção aprovada e rotina de backup. A infraestrutura implementada não significa que o produto esteja liberado para dados clínicos reais.
 
 ## Base da imagem e correções de sistema
 
@@ -59,12 +61,6 @@ Na auditoria de 12/11/2026, o rebuild dessa correção foi bloqueado pelo proxy 
 O usuário de execução continua sem privilégios (UID 1000, preservando o usuário anterior de desenvolvimento). O MySQL permanece externo, usando PyMySQL. A mudança de distribuição não muda o contrato HTTP nem as regras MVC. Dependências continuam fixadas em requirements.txt; a CI verifica a imagem completa com a mesma política de vulnerabilidades e segredos.
 
 Manter a base atualizada: consultar a imagem oficial Python 3.12/Alpine, verificar o novo digest, reconstruir, executar testes incluindo MySQL e repetir o scan completo. Um resultado limpo em HIGH/CRITICAL é uma observação daquela base de vulnerabilidades e imagem, não garantia permanente ou ausência de achados menores. Não usar ignore-unfixed, supressões globais ou remoção do scan para liberar a imagem.
-
-### Limitação atual do Keycloak
-
-Na mesma auditoria, o último patch oficial publicado do Keycloak era [26.8.2](https://github.com/keycloak/keycloak/releases/tag/26.8.2), e o digest da tag correspondia ao já fixado em `docker/keycloak/Dockerfile`. O scan completo dessa imagem encontrou 6 HIGH, 0 CRITICAL e 0 segredos: um achado em OpenJDK e quatro em `sqlite-libs` sem versão corrigida indicada pela base do Trivy, além de um em Guava 33.6.0-jre cuja correção 33.7.2 ainda não estava incorporada nessa imagem oficial.
-
-Essa imagem não está aprovada pelo critério HIGH/CRITICAL. O check `image` permanece bloqueando os achados, mesmo sem correção na última imagem upstream. Aguardar uma correção compatível e repetir build, testes e scans; não substituir JARs manualmente, trocar de distribuição apenas para mudar a detecção ou suprimir vulnerabilidades para liberar o check.
 
 ## Auditoria contínua e diagnóstico
 

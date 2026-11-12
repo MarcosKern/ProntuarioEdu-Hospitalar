@@ -1,6 +1,6 @@
 # Documentação do banco MySQL
 
-Esta pasta incorpora as fontes Markdown e SQL recebidas do responsável, revisadas para **MySQL 8.4 externo com InnoDB**. Os arquivos são referências para revisão e desenvolvimento futuro. Sua inclusão não aplica o schema, não cria endpoints e não modifica a arquitetura MVC ou a autenticação OAuth2/OIDC atual.
+Esta pasta incorpora as fontes Markdown e SQL recebidas do responsável, revisadas para **MySQL 8.4 externo com InnoDB**. Os arquivos são referências para revisão e desenvolvimento futuro. Sua inclusão não aplica o schema, não cria endpoints e não modifica a arquitetura MVC ou a autenticação local JWT atual.
 
 ## Por onde começar
 
@@ -35,7 +35,7 @@ PKs, índices de UNIQUEs declaradas nas tabelas e índices criados pelo MySQL pa
 - A organização usa `dominio__tabela` no mesmo database e FKs InnoDB entre essas tabelas. Nomes físicos não devem ser substituídos por `dominio.tabela` em consultas ou Models MySQL.
 - Unicidades condicionais usam índices UNIQUE sobre colunas geradas que retornam `1` ou `NULL`. Por exemplo, `chave_atual` diferencia ocupações abertas das encerradas. Regras que dependem do relógio, como expiração de alocação, continuam exigindo verificação na consulta e transação.
 - A largura de exibição obsoleta `TINYINT(1)` foi substituída por `TINYINT`, sem mudar armazenamento, defaults, expressão gerada ou constraints. Flags continuam exigindo validação explícita de 0/1 quando essa regra for necessária.
-- Os UUIDs e hashes com collation explícita preservam comparação binária. O login usa `utf8mb4_0900_as_ci`; o restante mantém a collation fornecida no SQL. O bootstrap inicial de desenvolvimento já vincula o `sub` Keycloak ao `id` do usuário `admin`, com `provedor=keycloak`, conforme a [ADR 0009](../../../docs/adr/0009-administrador-aplicacao-keycloak.md). A integração geral de identidades e de outros provedores continua pendente.
+- UUIDs e hashes com collation explícita preservam comparação binária. O login usa `utf8mb4_0900_as_ci`; o restante mantém a collation fornecida. A autenticação atual usa `cadastro__usuarios` com `provedor=local` e senha em hash scrypt, além de `cadastro__sessoes_usuario`, conforme a [ADR 0010](../../../docs/adr/0010-autenticacao-local.md).
 - As referências a políticas nativas de autorização por linha foram substituídas pela validação por objeto no backend. FKs e CHECKs não verificam o usuário autenticado nem concedem permissão de leitura.
 
 O projeto das tabelas recebido foi preservado. O perfil administrativo inicial e sua permissão de gestão de usuários já são usados pelo bootstrap explícito. As demais regras educacionais, fórmulas clínicas, perfis e invariantes entre registros continuam como propostas de domínio a validar; documentá-las não significa implementá-las ou homologá-las.
@@ -44,11 +44,11 @@ O projeto das tabelas recebido foi preservado. O perfil administrativo inicial e
 
 As migrações em [`../../migrations`](../../migrations) mantêm as tabelas técnicas `record_permissions` e `audit_events`, além do controle `alembic_version`. Elas **não criam as 64 tabelas deste documento**. As tabelas técnicas e o domínio recebido têm finalidades e nomes diferentes; não devem ser renomeados ou unidos automaticamente.
 
-O material recebido contém campos e tabelas para senha local, recuperação de acesso, MFA e sessões. A aplicação valida tokens de um **provedor OIDC externo**, com Keycloak disponível no desenvolvimento, sem emissão local de tokens ou cadastro de senhas pela API. O [administrador inicial](../../ADMINISTRADOR.md) já possui vínculo com `cadastro__usuarios`, perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`. Outras contas, provedores e políticas de domínio exigem suas próprias implementações e validações.
+A aplicação já utiliza senha local com hash e sessões para autenticação JWT. Recuperação de acesso e MFA continuam pendentes, apesar de suas tabelas existirem. O [administrador inicial](../../ADMINISTRADOR.md) é criado explicitamente em `cadastro__usuarios`, com perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`; contas externas só são convertidas por comando explícito.
 
 Não há INSERTs, usuários padrão ou pacientes de demonstração no SQL. A coluna `ficticio` faz parte da modelagem educacional recebida; sua presença e seu default não inserem pacientes. Os cenários ilustrativos da documentação não são scripts de carga.
 
-O cadastro do administrador é uma operação explícita posterior: o script usa `compose exec` no serviço `backend` do projeto que acabou de iniciar e utiliza a conexão configurada nesse contêiner. Não recalcula porta, usuário, senha ou destino do banco a partir de `.env.mysql`. O bootstrap não cria tabelas, não insere pacientes e não reativa concessões revogadas.
+O cadastro do administrador é posterior à criação do schema: execute `scripts/create_admin.py` na própria API, usando sua conexão configurada. A senha é digitada no terminal e somente seu hash é enviado ao banco. O comando não cria tabelas, pacientes nem reativa concessões revogadas.
 
 ## Aplicação do schema
 

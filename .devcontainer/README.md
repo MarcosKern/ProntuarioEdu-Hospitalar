@@ -39,7 +39,7 @@ O script cria `backend/.venv`, instala `backend/requirements-dev.txt` e verifica
 Não execute esse comando em paralelo enquanto a preparação automática estiver em andamento. Aguarde o término do processo; quando houver a opção **View creation log** / **Exibir log de criação**, acompanhe por ela. Ao concluir o script, o log deve conter:
 
 ```text
-Dependências prontas. Configure MySQL/OIDC e use a tarefa Codespaces: iniciar API.
+Dependências prontas. Configure MySQL e AUTH_JWT_SECRET e use a tarefa Codespaces: iniciar API.
 Nenhum SQL foi importado e nenhuma migração foi executada.
 ```
 
@@ -128,7 +128,7 @@ A feature Docker necessita permissões do ambiente de contêineres e pode ser bl
 
 ## Etapa futura: configurar MySQL externo e segredos
 
-Use **Settings → Secrets and variables → Codespaces** do GitHub, ou seus segredos pessoais de Codespaces, habilitando acesso ao repositório. Configure `DATABASE_URL` e, quando necessário, os valores `OIDC_*`. Reinicie/recrie o Codespace para receber alterações de segredos. Não colocar valores em `devcontainer.json`, tasks, conexões versionadas ou mensagens de commit.
+Use **Settings → Secrets and variables → Codespaces** do GitHub, ou seus segredos pessoais de Codespaces, habilitando acesso ao repositório. Configure `DATABASE_URL` e `AUTH_JWT_SECRET`. Reinicie/recrie o Codespace para receber alterações de segredos. Não colocar valores em `devcontainer.json`, tasks, conexões versionadas ou mensagens de commit.
 
 A variável exportada pelo Codespaces tem precedência sobre `.env`. Alternativamente, preencher `backend/.env` privadamente. O formato aceito é `mysql+pymysql://...`, com credenciais percent-encoded. Certificados não são segredos em variável de texto: disponibilizar o arquivo CA confiável no Codespace e apontar `MYSQL_SSL_CA` para seu caminho.
 
@@ -151,11 +151,11 @@ O wrapper acrescenta ao processo apenas o hostname exato de encaminhamento do Co
 - `/health`: verificar acesso SQL real.
 - `/docs`: Swagger em desenvolvimento.
 - `/openapi.json`: importar a especificação no Postman.
-- `/api/v1/me`: sem token, retorna 401; exige provedor OIDC configurado para login real.
+- `/api/v1/me`: sem token, retorna 401; o login local exige chave JWT e usuário cadastrado; veja [autenticação](../backend/AUTHENTICATION.md).
 
 Para requisições executadas dentro do Codespace, usar o loopback da API. Para requisições externas, usar a URL encaminhada privada e sua autenticação de acesso do GitHub; a autenticação do túnel é diferente do token OAuth2 da API. Não tornar a porta pública para contornar falhas. Se o Postman não tiver todos os recursos na edição web, abrir o Codespace no VS Code Desktop ou usar Swagger/cliente HTTP no terminal.
 
-Para outra porta: `backend/.venv/bin/python .devcontainer/start.py --port 8001` e encaminhá-la manualmente. Ctrl+C encerra a API. A tarefa funciona com ou sem provedor OIDC, mas endpoints protegidos continuam bloqueados sem configuração válida.
+Para outra porta: `backend/.venv/bin/python .devcontainer/start.py --port 8001` e encaminhá-la manualmente. Ctrl+C encerra a API. A tarefa funciona com ou sem chave JWT, mas endpoints protegidos continuam bloqueados sem chave JWT, conta e token válidos.
 
 ## Testes e Docker
 

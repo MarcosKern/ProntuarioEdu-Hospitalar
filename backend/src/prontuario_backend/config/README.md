@@ -14,4 +14,4 @@ Cobrir a responsabilidade com testes: regras isoladas em `backend/tests/unit/`, 
 
 O ambiente inicial usa FastAPI e SQLAlchemy/MySQL externo. Os arquivos Python desta pasta participam da API de desenvolvimento; funcionalidades clínicas ainda não foram implementadas.
 
-`auth.py` contém `authenticate_request`, a função usada por `Security` para validar o access token e os escopos antes da execução do endpoint. Ela usa somente o emissor, audiência e JWKS configurados no servidor. Consulte o [guia de autenticação](../../../AUTHENTICATION.md) para configuração, validade e renovação no provedor externo.
+`auth.py` contém `authenticate_request`, a função usada por `Security` para validar o access token e os escopos antes da execução do endpoint. Ela verifica assinatura HS256, emissor/audiência configurados e sessão ativa no MySQL. Consulte o [guia de autenticação](../../../AUTHENTICATION.md) para configuração, login local, validade e renovação.

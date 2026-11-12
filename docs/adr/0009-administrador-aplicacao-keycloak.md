@@ -1,5 +1,7 @@
 # ADR 0009 — Administrador da aplicação com Keycloak de desenvolvimento
 
+Atualização de 12/11/2026: as decisões de autenticação abaixo são históricas e foram substituídas pelo [login local da ADR 0010](0010-autenticacao-local.md). A configuração atual está em `backend/AUTHENTICATION.md`.
+
 Status: autorizado pelo responsável, que escolheu Keycloak no Docker de desenvolvimento e solicitou o administrador dos usuários do sistema de prontuários.
 
 O modo explícito `auth_dev.py up --with-backend` prepara o provedor e cria `admin` em `cadastro__usuarios`, com perfil `ADMINISTRADOR`, permissão `USUARIO_GERENCIAR`, vínculo ativo e auditoria. O login é do Keycloak; as permissões são verificadas no MySQL da aplicação, separadamente das credenciais de infraestrutura.

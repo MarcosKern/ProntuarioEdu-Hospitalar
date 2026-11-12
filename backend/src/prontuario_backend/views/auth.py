@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 class IdentityResponse(BaseModel):
@@ -22,3 +22,21 @@ class SessionResponse(BaseModel):
     expires_at: datetime
     expires_in_seconds: int = Field(ge=0)
     refresh_required: bool
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int
+    scope: str
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: SecretStr = Field(max_length=200)
+    scope: str = "identity:read"
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: SecretStr = Field(min_length=1, max_length=128)
+    new_password: SecretStr = Field(min_length=12, max_length=128)

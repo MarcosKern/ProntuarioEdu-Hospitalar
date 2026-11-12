@@ -4,4 +4,4 @@ A suíte verifica rotas, tokens, limites, SQL real em **MySQL externo de teste**
 
 Use banco descartável separado (`MYSQL_TEST_URL`, nome iniciado por `prontuario_test`). A fixture apaga tabelas técnicas entre casos. Sem essa variável, verificações que precisam do banco são puladas. Nunca use o banco de desenvolvimento ou produção, nem rode a suíte em paralelo no mesmo banco.
 
-`test_development.py` cobre SQL, schema e identidade; `test_security.py` verifica configuração e controles HTTP/permissões; `test_mysql.py` verifica triggers de auditoria. Testes usam dados transitórios e não carregam cadastros na aplicação. OIDC externo e funcionalidades clínicas exigem validações próprias quando configurados/implementados.
+`test_development.py` cobre SQL, schema e identidade; `test_security.py` verifica configuração e controles HTTP/permissões; `test_mysql.py` verifica triggers de auditoria. Testes usam dados transitórios e não carregam cadastros na aplicação. `test_authentication.py` e `test_admin.py` verificam login local e autorização com MySQL isolado; funcionalidades clínicas exigem suas próprias validações futuras.

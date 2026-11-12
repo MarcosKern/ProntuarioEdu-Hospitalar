@@ -16,4 +16,4 @@ Cobrir a responsabilidade com testes: regras isoladas em `backend/tests/unit/`, 
 
 O ambiente inicial usa FastAPI e SQLAlchemy/MySQL externo. Os arquivos Python desta pasta participam da API de desenvolvimento; funcionalidades clínicas ainda não foram implementadas.
 
-`auth.py::session_status` recebe uma identidade já autenticada, calcula o tempo restante do access token e seleciona a resposta de validade da sessão. A autenticação da requisição acontece antes, em `config/auth.py`; a renovação de tokens pertence ao provedor OAuth2/OIDC externo.
+`auth.py::session_status` recebe uma identidade já autenticada, calcula o tempo restante do access token e seleciona a resposta de validade da sessão. A autenticação da requisição acontece antes, em `config/auth.py`; `auth.py` também coordena login, renovação com rotação, logout e troca de senha usando os Models.

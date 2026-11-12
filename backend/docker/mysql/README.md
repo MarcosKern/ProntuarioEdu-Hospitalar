@@ -18,7 +18,7 @@ O script cria `.env` a partir do exemplo apenas se ainda não existir. Depois ge
 
 O `.env` original é preservado. Repetir o script mantém as credenciais de `.env.mysql`, para continuar acessando um volume já inicializado. Não é necessário preencher uma URL de banco externo para esse modo.
 
-Configurações da aplicação, como `ALLOWED_HOSTS`, CORS e OIDC, continuam no `.env`. O arquivo `.env.mysql` fornece apenas os parâmetros do banco/Compose; a senha root é enviada somente ao serviço MySQL. O serviço da API recebe uma URL com destino interno explícito `mysql:3306`, mesmo que exista outra `DATABASE_URL` exportada no terminal ou em um segredo do Codespace.
+Configurações da aplicação, como `ALLOWED_HOSTS`, CORS e AUTH_JWT_SECRET, continuam no `.env`. O arquivo `.env.mysql` fornece apenas os parâmetros do banco/Compose; a senha root é enviada somente ao serviço MySQL. O serviço da API recebe uma URL com destino interno explícito `mysql:3306`, mesmo que exista outra `DATABASE_URL` exportada no terminal ou em um segredo do Codespace.
 
 ## 2. Construir e subir o ambiente
 

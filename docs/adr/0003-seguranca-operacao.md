@@ -1,5 +1,7 @@
 # ADR 0003 — Segurança e operação do Back-end MVC
 
+Atualização de 12/11/2026: as decisões de autenticação abaixo foram substituídas pelo [login local da ADR 0010](0010-autenticacao-local.md); os demais controles de segurança permanecem.
+
 > Histórico: a escolha de banco deste documento foi substituída pela [ADR 0004 — MySQL externo](0004-mysql-externo.md).
 
 Status: implementação solicitada pelo responsável. Sem cadastros, prontuários ou concessões iniciais.
