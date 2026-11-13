@@ -49,7 +49,6 @@ def main():
                     "host": url.host,
                     "port": url.port or 3306,
                     "user": url.username,
-                    "password": url.password or "",
                 }.items()
             )
             + "\n"
@@ -66,6 +65,8 @@ def main():
             "run",
             "--rm",
             "-i",
+            "--env",
+            "MYSQL_PWD",
             "--mount",
             f"type=bind,src={config},dst=/run/mysql.cnf,readonly",
         ]
@@ -78,6 +79,10 @@ def main():
             docker += ["--network", os.environ["MYSQL_CLIENT_NETWORK"]]
 
         def client(program, *params, **kwargs):
+            # Encaminhar a senha apenas ao processo filho: não gravar no .cnf
+            # nem interpolar seu valor nos argumentos visíveis do Docker.
+            client_env = os.environ.copy()
+            client_env["MYSQL_PWD"] = url.password or ""
             return subprocess.run(
                 docker
                 + [
@@ -87,6 +92,7 @@ def main():
                     *params,
                 ],
                 check=True,
+                env=client_env,
                 **kwargs,
             )
 

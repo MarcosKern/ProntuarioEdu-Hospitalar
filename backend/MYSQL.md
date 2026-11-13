@@ -59,7 +59,7 @@ python scripts/backup.py backup --key-file backups/storage.fernet --file backups
 python scripts/backup.py verify --key-file backups/storage.fernet --file backups/database.backup.enc
 ```
 
-A senha é passada por arquivo temporário privado montado somente para leitura, sem argumento de linha de comando. A CA é montada quando MYSQL_SSL_CA está configurada. O dump é transacional para tabelas InnoDB e não deve ocorrer durante mudanças de schema. A restauração ocorre em banco `restore_check_...` novo, removido ao final; não sobrescreve o banco configurado. Backup é criptografado; guarde a chave em local separado. O script processa o dump em memória; grandes bancos precisam de solução operacional com streaming e política de retenção/recuperação.
+A senha é encaminhada por `MYSQL_PWD` no ambiente do processo Docker e do cliente MySQL; seu valor não é gravado no arquivo temporário de configuração nem incluído nos argumentos. O arquivo montado somente para leitura contém apenas host, porta, usuário e opções TLS. Administradores do host/daemon podem inspecionar o ambiente do contêiner durante a execução; execute backups em infraestrutura confiável. A CA é montada quando MYSQL_SSL_CA está configurada. O dump é transacional para tabelas InnoDB e não deve ocorrer durante mudanças de schema. A restauração ocorre em banco `restore_check_...` novo, removido ao final; não sobrescreve o banco configurado. Backup é criptografado; guarde a chave em local separado. O script processa o dump em memória; grandes bancos precisam de solução operacional com streaming e política de retenção/recuperação.
 
 ## Certificado MySQL no Compose
 
