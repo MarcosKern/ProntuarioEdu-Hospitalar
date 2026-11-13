@@ -2,6 +2,8 @@
 
 Para iniciar com o usuário **`admin` do ProntuarioEdu**, perfil `ADMINISTRADOR` e login na própria API, consulte [primeiro administrador](ADMINISTRADOR.md). O cadastro é explícito e a senha fica somente como hash no MySQL.
 
+O [acompanhamento do card F01](docs/F01.md) registra a execução por etapas, as confirmações e as evidências. A etapa 1 validou a estrutura MVC e passou a recusar URLs MySQL sem servidor/database ou com porta inválida; as demais etapas aguardam confirmação.
+
 > **Banco padrão: MySQL externo.** No Compose base, configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há fallback automático para banco local.
 
 Para desenvolvimento com o SQL recebido já inicializado em um serviço MySQL próprio, use o [modo opcional MySQL em contêiner](docker/mysql/README.md). O guia inclui preparação das credenciais, inicialização do schema, conexão do cliente e acesso à API no Codespace.
