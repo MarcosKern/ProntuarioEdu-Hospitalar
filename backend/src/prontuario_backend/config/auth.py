@@ -1,4 +1,5 @@
 """Hash de senhas, emissão JWT e autenticação antes dos endpoints."""
+
 import base64
 import math
 import secrets
@@ -22,8 +23,12 @@ API_SCOPES = {
     "identity:read": "Consultar a própria identidade e a validade do acesso",
     "admin:access": "Administrar usuários; não concede acesso a prontuários",
 }
-oauth2 = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", scopes=API_SCOPES, auto_error=False,
-                             description="Entre com usuário e senha da aplicação. O Swagger envia o JWT como Bearer.")
+oauth2 = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/token",
+    scopes=API_SCOPES,
+    auto_error=False,
+    description="Entre com usuário e senha da aplicação. O Swagger envia o JWT como Bearer.",
+)
 
 
 @dataclass(frozen=True)
@@ -39,7 +44,12 @@ def hash_password(value: str) -> str:
         raise ValueError("A senha deve ter entre 12 e 128 caracteres")
     salt = secrets.token_bytes(16)
     digest = Scrypt(salt=salt, length=32, n=2**15, r=8, p=3).derive(value.encode())
-    return "scrypt$" + base64.b64encode(salt).decode() + "$" + base64.b64encode(digest).decode()
+    return (
+        "scrypt$"
+        + base64.b64encode(salt).decode()
+        + "$"
+        + base64.b64encode(digest).decode()
+    )
 
 
 def verify_password(value: str, encoded: str) -> bool:
@@ -47,7 +57,10 @@ def verify_password(value: str, encoded: str) -> bool:
         algorithm, salt, digest = encoded.split("$")
         if algorithm != "scrypt" or not 1 <= len(value) <= 128:
             return False
-        salt, digest = base64.b64decode(salt, validate=True), base64.b64decode(digest, validate=True)
+        salt, digest = (
+            base64.b64decode(salt, validate=True),
+            base64.b64decode(digest, validate=True),
+        )
         if len(salt) != 16 or len(digest) != 32:
             return False
         Scrypt(salt=salt, length=32, n=2**15, r=8, p=3).verify(value.encode(), digest)
@@ -67,28 +80,64 @@ def issue_access_token(subject: str, session_id: str, scopes: frozenset[str]):
     settings = get_settings()
     now = datetime.now(UTC)
     expires = now + timedelta(minutes=settings.auth_access_token_minutes)
-    claims = {"iss": settings.auth_jwt_issuer, "aud": settings.auth_jwt_audience,
-              "sub": subject, "sid": session_id, "jti": str(uuid4()), "iat": now, "exp": expires,
-              "token_use": "access", "scope": " ".join(sorted(scopes))}
-    return jwt.encode(claims, signing_secret(), algorithm="HS256"), settings.auth_access_token_minutes * 60
+    claims = {
+        "iss": settings.auth_jwt_issuer,
+        "aud": settings.auth_jwt_audience,
+        "sub": subject,
+        "sid": session_id,
+        "jti": str(uuid4()),
+        "iat": now,
+        "exp": expires,
+        "token_use": "access",
+        "scope": " ".join(sorted(scopes)),
+    }
+    return jwt.encode(
+        claims, signing_secret(), algorithm="HS256"
+    ), settings.auth_access_token_minutes * 60
 
 
 def invalid_token(message="Token inválido"):
-    return HTTPException(401, message, headers={"WWW-Authenticate": 'Bearer error="invalid_token"'})
+    return HTTPException(
+        401, message, headers={"WWW-Authenticate": 'Bearer error="invalid_token"'}
+    )
 
 
 def validate_access_token(token: str) -> AuthenticatedUser:
     settings = get_settings()
     secret = signing_secret()
     try:
-        claims = jwt.decode(token, secret, algorithms=["HS256"], audience=settings.auth_jwt_audience,
-                            issuer=settings.auth_jwt_issuer,
-                            options={"require": ["exp", "iat", "iss", "aud", "sub", "sid", "jti", "token_use", "scope"]})
+        claims = jwt.decode(
+            token,
+            secret,
+            algorithms=["HS256"],
+            audience=settings.auth_jwt_audience,
+            issuer=settings.auth_jwt_issuer,
+            options={
+                "require": [
+                    "exp",
+                    "iat",
+                    "iss",
+                    "aud",
+                    "sub",
+                    "sid",
+                    "jti",
+                    "token_use",
+                    "scope",
+                ]
+            },
+        )
         for name in ("exp", "iat", "nbf"):
-            if name in claims and (type(claims[name]) not in (int, float) or not math.isfinite(claims[name])):
+            if name in claims and (
+                type(claims[name]) not in (int, float)
+                or not math.isfinite(claims[name])
+            ):
                 raise jwt.InvalidTokenError("Invalid NumericDate")
         subject, session_id = claims["sub"], claims["sid"]
-        if str(UUID(subject)) != subject or str(UUID(session_id)) != session_id or claims["token_use"] != "access":
+        if (
+            str(UUID(subject)) != subject
+            or str(UUID(session_id)) != session_id
+            or claims["token_use"] != "access"
+        ):
             raise jwt.InvalidTokenError("Invalid identity")
         if not isinstance(claims["scope"], str):
             raise jwt.InvalidTokenError("Invalid scopes")
@@ -98,7 +147,14 @@ def validate_access_token(token: str) -> AuthenticatedUser:
         expires = datetime.fromtimestamp(claims["exp"], UTC)
     except jwt.ExpiredSignatureError:
         raise invalid_token("Token expirado; renove o acesso") from None
-    except (jwt.PyJWTError, ValueError, TypeError, AttributeError, OverflowError, OSError):
+    except (
+        jwt.PyJWTError,
+        ValueError,
+        TypeError,
+        AttributeError,
+        OverflowError,
+        OSError,
+    ):
         raise invalid_token() from None
     try:
         with engine().connect() as connection:
@@ -112,11 +168,23 @@ def validate_access_token(token: str) -> AuthenticatedUser:
     return AuthenticatedUser(subject, expires, scopes, session_id)
 
 
-def authenticate_request(security_scopes: SecurityScopes, token: Annotated[str | None, Depends(oauth2)]) -> AuthenticatedUser:
+def authenticate_request(
+    security_scopes: SecurityScopes, token: Annotated[str | None, Depends(oauth2)]
+) -> AuthenticatedUser:
+    # Nas rotas que exigem login, use Security(authenticate_request, scopes=["identity:read"]).
+    # A dependência executa antes do endpoint e confere JWT, sessão e escopos.
+    # Não chame o endpoint diretamente nem aceite o ID enviado pelo cliente como identidade.
     if not token:
-        raise HTTPException(401, "Token necessário", headers={"WWW-Authenticate": "Bearer"})
+        raise HTTPException(
+            401, "Token necessário", headers={"WWW-Authenticate": "Bearer"}
+        )
     user = validate_access_token(token)
     if not set(security_scopes.scopes).issubset(user.scopes):
-        raise HTTPException(403, "Escopo insuficiente", headers={"WWW-Authenticate":
-                            f'Bearer error="insufficient_scope", scope="{security_scopes.scope_str}"'})
+        raise HTTPException(
+            403,
+            "Escopo insuficiente",
+            headers={
+                "WWW-Authenticate": f'Bearer error="insufficient_scope", scope="{security_scopes.scope_str}"'
+            },
+        )
     return user

@@ -32,8 +32,17 @@ def test_headers_limits_and_logs(monkeypatch, caplog):
         assert response.headers["x-request-id"]
         assert client.get("/api/v1/me").status_code == 429
         assert client.post("/health", content="x" * 17).status_code == 413
-        assert client.get("/health", headers={"host": "unexpected.example"}).status_code == 400
-        preflight = client.options("/health", headers={"Origin": "https://untrusted.example", "Access-Control-Request-Method": "GET"})
+        assert (
+            client.get("/health", headers={"host": "unexpected.example"}).status_code
+            == 400
+        )
+        preflight = client.options(
+            "/health",
+            headers={
+                "Origin": "https://untrusted.example",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
         assert "access-control-allow-origin" not in preflight.headers
         assert client.get("/metrics").status_code == 200
     assert "DO_NOT_LOG" not in caplog.text
@@ -69,8 +78,11 @@ def test_production_hides_docs_and_metrics(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "mysql+pymysql://unused@localhost/unused")
     monkeypatch.setenv("REDIS_URL", "rediss://localhost:6379/0")
     import certifi
+
     monkeypatch.setenv("MYSQL_SSL_CA", certifi.where())
-    monkeypatch.setenv("AUTH_JWT_SECRET", "isolated-test-signing-key-that-is-at-least-32-bytes")
+    monkeypatch.setenv(
+        "AUTH_JWT_SECRET", "isolated-test-signing-key-that-is-at-least-32-bytes"
+    )
     get_settings.cache_clear()
     with TestClient(create_app(), base_url="http://localhost") as client:
         for path in ("/docs", "/docs/oauth2-redirect", "/openapi.json", "/metrics"):

@@ -16,7 +16,9 @@ def test_mysql_migrations_and_audit_protection(monkeypatch):
     url = os.getenv("MYSQL_TEST_URL")
     if not url:
         pytest.skip("MYSQL_TEST_URL not set; run CI or the MySQL integration command")
-    assert make_url(url).database.startswith("prontuario_test"), "Use a dedicated test database"
+    assert make_url(url).database.startswith("prontuario_test"), (
+        "Use a dedicated test database"
+    )
     monkeypatch.setenv("DATABASE_URL", url)
     get_settings.cache_clear()
     cfg = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
@@ -25,7 +27,11 @@ def test_mysql_migrations_and_audit_protection(monkeypatch):
     # A transaction-local test row is rolled back and never retained.
     with engine().connect() as db:
         tx = db.begin()
-        db.execute(text("INSERT INTO audit_events VALUES ('test', CURRENT_TIMESTAMP, 'test', 'test', 'read', 'denied', 'test')"))
+        db.execute(
+            text(
+                "INSERT INTO audit_events VALUES ('test', CURRENT_TIMESTAMP, 'test', 'test', 'read', 'denied', 'test')"
+            )
+        )
         with pytest.raises(DBAPIError):
             db.execute(text("DELETE FROM audit_events WHERE id='test'"))
         tx.rollback()
