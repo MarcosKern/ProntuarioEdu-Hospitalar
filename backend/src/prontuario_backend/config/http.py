@@ -14,6 +14,8 @@ from redis.exceptions import RedisError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
+from prontuario_backend.views.errors import error_body
+
 logger = logging.getLogger("prontuario.requests")
 
 
@@ -58,14 +60,14 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                         raise RuntimeError("limiter capacity")
                     self.windows[key] = (start, count)
                 if count > self.settings.rate_limit:
-                    response = JSONResponse({"error": {"code": "rate_limited", "request_id": request_id}}, 429, headers={"Retry-After": "60"})
+                    response = JSONResponse(error_body("rate_limited", request_id), 429, headers={"Retry-After": "60"})
             except (RedisError, RuntimeError):
-                response = JSONResponse({"error": {"code": "temporarily_unavailable", "request_id": request_id}}, 503)
+                response = JSONResponse(error_body("temporarily_unavailable", request_id), 503)
         if response is None:
             body = bytearray()
             async for chunk in request.stream():
                 if len(body) + len(chunk) > self.settings.max_body_bytes:
-                    response = JSONResponse({"error": {"code": "body_too_large", "request_id": request_id}}, 413)
+                    response = JSONResponse(error_body("body_too_large", request_id), 413)
                     break
                 body.extend(chunk)
             if response is None:
@@ -81,7 +83,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                     logger.error(json.dumps({"event": "unhandled_error", "request_id": request_id,
                                              "route": getattr(route, "path", "unmatched"),
                                              "error_type": type(error).__name__, "frames": frames}))
-                    response = JSONResponse({"error": {"code": "internal_error", "request_id": request_id}}, 500)
+                    response = JSONResponse(error_body("internal_error", request_id), 500)
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"

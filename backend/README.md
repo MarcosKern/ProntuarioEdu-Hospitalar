@@ -2,7 +2,7 @@
 
 Para iniciar com o usuário **`admin` do ProntuarioEdu**, perfil `ADMINISTRADOR` e login na própria API, consulte [primeiro administrador](ADMINISTRADOR.md). O cadastro é explícito e a senha fica somente como hash no MySQL.
 
-O [acompanhamento do card F01](docs/F01.md) registra a execução por etapas, as confirmações e as evidências. A etapa 1 validou MVC e configuração MySQL; a etapa 2 comprovou transações e migrations em MySQL descartável. As etapas seguintes aguardam confirmação.
+O [acompanhamento do card F01](docs/F01.md) registra a execução por etapas, as confirmações e as evidências. As etapas 1 e 2 validaram MVC, MySQL, transações e migrations; a etapa 3 definiu os [contratos HTTP, erros e paginação](CONTRATOS.md). As etapas seguintes aguardam confirmação.
 
 > **Banco padrão: MySQL externo.** No Compose base, configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há fallback automático para banco local.
 

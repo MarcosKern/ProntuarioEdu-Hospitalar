@@ -15,6 +15,7 @@ from prontuario_backend.controllers.health import health
 from prontuario_backend.views.auth import (
     AdministratorResponse,
     IdentityResponse,
+    LoginRequest,
     PasswordChangeRequest,
     RefreshRequest,
     SessionResponse,
@@ -30,9 +31,7 @@ router.add_api_route("/api/v1/auth/token", token_endpoint, methods=["POST"], res
                      tags=["Autenticação"], summary="Entrar com usuário e senha", operation_id="login",
                      description="Formulário com grant_type=password, username, password e scope. Sem cadastro automático.",
                      openapi_extra={"requestBody": {"required": True, "content": {"application/x-www-form-urlencoded": {
-                         "schema": {"type": "object", "required": ["grant_type", "username", "password"], "properties": {
-                             "grant_type": {"type": "string", "enum": ["password"]}, "username": {"type": "string"},
-                             "password": {"type": "string", "format": "password"}, "scope": {"type": "string"}}}}}}})
+                         "schema": LoginRequest.model_json_schema()}}}})
 router.add_api_route("/health", health, methods=["GET"], response_model=HealthResponse, tags=["Desenvolvimento"],
                      summary="Verificar a saúde da API e do MySQL", operation_id="check_health",
                      description="Executa uma consulta SQL de verificação. Não retorna registros do domínio.",

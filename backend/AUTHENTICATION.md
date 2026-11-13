@@ -60,6 +60,8 @@ O token fica somente no estado da página, com persistência desativada. O botã
 | `POST /api/v1/auth/password` | Bearer + JSON com `current_password` e `new_password`; troca senha, revoga todas as sessões e responde 204 |
 | `GET /api/v1/admin/me` | Exige os dois escopos e concessões administrativas ativas |
 
+As entradas recusam campos desconhecidos. O login aceita `username` de 1 a 150 caracteres, `password` de 1 a 128 e `scope` de até 512; os campos opcionais de cliente do Swagger devem ficar vazios. Formulário incompleto, repetido, UTF-8 inválido ou campo não suportado recebe 400; conteúdo JSON no login recebe 415. JSON inválido ou fora dos contratos de refresh/troca de senha recebe 422, sem devolver valores sensíveis. Credenciais com formato válido, mas incorretas, recebem 401. Consulte os [contratos HTTP](CONTRATOS.md) para limites e envelope de erro.
+
 Cada renovação substitui o refresh token anterior; reutilizá-lo retorna `401`. A renovação não prolonga o prazo máximo da sessão. `scope` omitido na renovação solicita somente `identity:read`; solicite também `admin:access` quando necessário e autorizado. As permissões são calculadas pelo servidor, nunca concedidas por campos do cliente.
 
 ## Como validar acesso e sessão

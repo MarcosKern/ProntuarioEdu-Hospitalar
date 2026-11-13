@@ -12,6 +12,7 @@ from prontuario_backend.config.http import SecurityMiddleware
 from prontuario_backend.config.settings import get_settings
 from prontuario_backend.config.swagger import swagger_config
 from prontuario_backend.routes.api import router
+from prontuario_backend.views.errors import error_body
 
 
 def create_app():
@@ -29,13 +30,14 @@ def create_app():
 
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc):
-        return JSONResponse({"error": {"code": f"http_{exc.status_code}", "message": exc.detail,
-                            "request_id": getattr(request.state, "request_id", None)}}, exc.status_code, headers=exc.headers)
+        message = exc.detail if isinstance(exc.detail, str) else "Requisição não concluída"
+        return JSONResponse(error_body(f"http_{exc.status_code}", request.state.request_id, message),
+                            exc.status_code, headers=exc.headers)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc):
         # Never echo invalid input values, which may contain credentials or records.
-        return JSONResponse({"error": {"code": "validation_error", "request_id": request.state.request_id}}, 422)
+        return JSONResponse(error_body("validation_error", request.state.request_id), 422)
 
     app.include_router(router)
     if not production:

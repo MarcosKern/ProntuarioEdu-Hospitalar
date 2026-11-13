@@ -1,14 +1,22 @@
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
 class ErrorDetail(BaseModel):
     code: str
-    request_id: str
+    request_id: UUID
     message: str | None = None
 
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+def error_body(code: str, request_id: str, message: str | None = None):
+    """Mantém o mesmo envelope público nos handlers e no middleware."""
+    return ErrorResponse(error=ErrorDetail(code=code, request_id=request_id, message=message)).model_dump(
+        mode="json", exclude_none=True)
 
 
 ERROR_RESPONSES = {
