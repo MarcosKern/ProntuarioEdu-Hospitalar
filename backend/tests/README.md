@@ -45,6 +45,8 @@ Sem MYSQL_TEST_URL, testes dependentes de banco são **pulados**, não aprovados
 | Arquivo/pasta | Verificação |
 | --- | --- |
 | `integration/test_development.py` | Saúde com SQL, Swagger/OpenAPI e tokens assinados em teste |
+| `integration/test_endpoint_failures.py` | Recusa antes de SQL e timeout HTTP com handshake TCP sem resposta |
+| `integration/test_endpoint_database.py` | Saúde/identidade com MySQL real, vínculo de sessão, escopo e conexão recusada |
 | `integration/test_authentication.py` | Validação antes do endpoint, claims e assinatura JWT, escopos, sessão no MySQL, expiração, renovação e logout |
 | `integration/test_admin.py` | Cadastro inicial da aplicação, idempotência, recusa de takeover e bloqueio por desativação/revogação |
 | `unit/test_settings.py` | URL MySQL completa, precedência de configuração e erros sem credenciais |

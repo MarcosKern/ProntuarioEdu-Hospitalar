@@ -66,7 +66,9 @@ Cada renovação substitui o refresh token anterior; reutilizá-lo retorna `401`
 
 ## Como validar acesso e sessão
 
-`authenticate_request` executa antes do endpoint. Aceita apenas Bearer no header; tokens em query/body não autenticam. Verifica HS256, assinatura, emissor, audiência, expiração, emissão, tipo de token e IDs da sessão/usuário. O algoritmo é fixado pelo servidor. Consulta o MySQL em cada requisição para recusar sessão encerrada/expirada, usuário desativado ou bloqueado e concessão administrativa revogada.
+`authenticate_request` executa antes do endpoint. Aceita apenas Bearer no header; tokens em query/body não autenticam. Verifica HS256, assinatura, emissor, audiência, expiração, emissão, tipo de token e IDs da sessão/usuário. O algoritmo é fixado pelo servidor. Depois de validar o JWT, consulta o MySQL para recusar sessão encerrada/expirada, usuário desativado ou bloqueado e concessão administrativa revogada.
+
+Com a chave JWT configurada, credenciais ausentes ou inválidas recebem 401 antes de consultar SQL, inclusive durante indisponibilidade do banco. Um JWT válido ainda depende da sessão no MySQL: se não for possível consultá-la, `/api/v1/me` retorna 503. `/health` é público, verifica SQL e também retorna 503 quando o banco não responde; ele não revela usuários, tokens ou dados clínicos. Os cenários estão documentados na [etapa 4 do F01](docs/F01.md#etapa-4--resultado).
 
 A senha usa scrypt com salt aleatório; o banco recebe somente o hash. O refresh token tem segredo aleatório e seu hash SHA-256 é persistido. Access e refresh tokens não são senhas: devem ser mantidos fora de logs, URLs, Git e armazenamento inseguro dos clientes. Logout e troca de senha bloqueiam também os JWTs já emitidos por meio da sessão.
 
