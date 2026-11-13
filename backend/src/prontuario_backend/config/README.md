@@ -15,3 +15,11 @@ Cobrir a responsabilidade com testes: regras isoladas em `backend/tests/unit/`, 
 O ambiente inicial usa FastAPI e SQLAlchemy/MySQL externo. Os arquivos Python desta pasta participam da API de desenvolvimento; funcionalidades clínicas ainda não foram implementadas.
 
 `auth.py` contém `authenticate_request`, a função usada por `Security` para validar o access token e os escopos antes da execução do endpoint. Ela verifica assinatura HS256, emissor/audiência configurados e sessão ativa no MySQL. Consulte o [guia de autenticação](../../../AUTHENTICATION.md) para configuração, login local, validade e renovação.
+
+## Sessões e transações
+
+`database.py::session()` fornece uma sessão SQLAlchemy. `with session() as db` garante seu fechamento, mas não faz commit automaticamente. Confirme com `db.commit()` ou delimite a unidade com `with db.begin()`: este último faz commit na saída normal e rollback se houver exceção. Se tratar uma falha de flush e reutilizar a mesma sessão, chame `db.rollback()` primeiro.
+
+Para o SQL direto dos Models existentes, `with engine().begin() as connection` também confirma ou desfaz a unidade inteira. Uma leitura pode usar `with engine().connect() as connection`. Os contextos devolvem a conexão ao pool ao terminar. Autorização e validações continuam sendo pré-requisitos da gravação; não responder sucesso antes da confirmação.
+
+Alembic mantém as tabelas técnicas separadas do DDL de domínio. DDL MySQL pode causar commits implícitos: rollback da sessão não desfaz automaticamente alterações de schema. Veja os testes e limites documentados na [etapa 2 do F01](../../../docs/F01.md#etapa-2--resultado).

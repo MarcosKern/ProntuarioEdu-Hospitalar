@@ -55,7 +55,7 @@ def test_openapi_matches_error_responses(monkeypatch):
             response = client.get(path)
             assert response.status_code == status
             parsed = ErrorResponse.model_validate(response.json())
-            assert parsed.error.request_id == response.headers["x-request-id"]
+            assert str(parsed.error.request_id) == response.headers["x-request-id"]
 
 
 def test_internal_error_logs_location_without_sensitive_values(caplog):

@@ -5,10 +5,12 @@ from urllib.parse import parse_qs, urlsplit
 
 from pydantic import Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
     app_env: Literal["development", "test", "production"] = "development"
     database_url: SecretStr
     mysql_ssl_ca: str = ""
@@ -41,10 +43,17 @@ class Settings(BaseSettings):
             raise ValueError("JWT signing secret requires at least 32 bytes")
         if not self.auth_jwt_issuer or not self.auth_jwt_audience:
             raise ValueError("JWT issuer and audience are required")
-        if not self.database_url.get_secret_value().startswith("mysql+pymysql://"):
+        try:
+            database = make_url(self.database_url.get_secret_value())
+        except (ArgumentError, ValueError):
+            raise ValueError("Invalid MySQL connection URL") from None
+        if database.drivername != "mysql+pymysql":
             raise ValueError("MySQL with PyMySQL is required")
-        db_query = parse_qs(urlsplit(self.database_url.get_secret_value()).query)
-        if any(key.lower().startswith("ssl") or key.lower() in {"connect_timeout", "read_timeout", "write_timeout"} for key in db_query):
+        if not database.host or not database.host.strip() or not database.database or not database.database.strip():
+            raise ValueError("MySQL requires an explicit server and database name")
+        if database.port is not None and not 1 <= database.port <= 65535:
+            raise ValueError("Invalid MySQL server port")
+        if any(key.lower().startswith("ssl") or key.lower() in {"connect_timeout", "read_timeout", "write_timeout"} for key in database.query):
             raise ValueError("Configure MySQL TLS and timeouts through settings")
         for ca in (self.mysql_ssl_ca, self.redis_ssl_ca):
             if ca and not Path(ca).is_file():

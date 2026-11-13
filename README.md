@@ -152,7 +152,7 @@ FastAPI gera OpenAPI a partir das rotas e esquemas. Em desenvolvimento, abra `/d
 
 1. Usar as dependências FastAPI já fixadas em `backend/requirements.txt`.
 2. Descrever entradas, campos públicos das respostas, status, erros e autenticação de cada operação.
-3. Gerar uma única especificação a partir da fonte aprovada. Em `contracts/openapi/`, guardar a exportação ou instruções de geração; não manter uma cópia manual divergente.
+3. Usar o contrato gerado pelas rotas/DTOs em `/openapi.json`. Siga [a consulta e exportação](contracts/openapi/README.md); não manter uma cópia manual divergente.
 4. Configurar a interface e o botão **Authorize** conforme a autenticação escolhida, sem embutir credenciais ou segredos.
 5. Validar o schema e testar requisições reais contra a API de teste, incluindo rejeições por falta de acesso.
 6. Incluir validação e comparação de contratos na CI para evitar quebrar clientes existentes.

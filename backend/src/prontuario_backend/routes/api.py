@@ -15,6 +15,7 @@ from prontuario_backend.controllers.health import health
 from prontuario_backend.views.auth import (
     AdministratorResponse,
     IdentityResponse,
+    LoginRequest,
     PasswordChangeRequest,
     RefreshRequest,
     SessionResponse,
@@ -30,9 +31,7 @@ router.add_api_route("/api/v1/auth/token", token_endpoint, methods=["POST"], res
                      tags=["Autenticação"], summary="Entrar com usuário e senha", operation_id="login",
                      description="Formulário com grant_type=password, username, password e scope. Sem cadastro automático.",
                      openapi_extra={"requestBody": {"required": True, "content": {"application/x-www-form-urlencoded": {
-                         "schema": {"type": "object", "required": ["grant_type", "username", "password"], "properties": {
-                             "grant_type": {"type": "string", "enum": ["password"]}, "username": {"type": "string"},
-                             "password": {"type": "string", "format": "password"}, "scope": {"type": "string"}}}}}}})
+                         "schema": LoginRequest.model_json_schema()}}}})
 router.add_api_route("/health", health, methods=["GET"], response_model=HealthResponse, tags=["Desenvolvimento"],
                      summary="Verificar a saúde da API e do MySQL", operation_id="check_health",
                      description="Executa uma consulta SQL de verificação. Não retorna registros do domínio.",
@@ -67,20 +66,26 @@ def admin_identity(admin: Annotated[AdministratorResponse, Depends(require_syste
 
 
 @router.post("/api/v1/auth/refresh", response_model=TokenResponse, tags=["Autenticação"], responses=AUTH_ERRORS,
-             summary="Renovar o acesso e rotacionar o refresh token", operation_id="refresh_access")
+             summary="Renovar o acesso e rotacionar o refresh token", operation_id="refresh_access",
+             description=("Recebe refresh_token e scope opcional no JSON. Rotaciona o refresh token, tornando o anterior inválido, "
+                          "sem prolongar o prazo máximo da sessão. O scope padrão é identity:read; admin:access exige concessão ativa."))
 def refresh(payload: RefreshRequest):
     return refresh_access(payload)
 
 
 @router.post("/api/v1/auth/logout", status_code=204, tags=["Autenticação"], responses=AUTH_ERRORS,
-             summary="Encerrar a sessão", operation_id="logout")
+             summary="Encerrar a sessão", operation_id="logout",
+             description=("Revoga a sessão do Bearer validado e bloqueia seus access/refresh tokens. "
+                          "Exige identity:read e retorna 204 sem corpo. Execute antes de limpar a autorização no Swagger."))
 def end_session(user: Annotated[AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])]):
     logout(user)
     return Response(status_code=204)
 
 
 @router.post("/api/v1/auth/password", status_code=204, tags=["Autenticação"], responses=AUTH_ERRORS,
-             summary="Trocar senha e encerrar todas as sessões", operation_id="change_password")
+             summary="Trocar senha e encerrar todas as sessões", operation_id="change_password",
+             description=("Exige Bearer com identity:read e JSON com current_password e new_password (12 a 128 caracteres). "
+                          "Confere a senha atual, troca seu hash e revoga todas as sessões do usuário. Retorna 204 sem corpo; entre novamente."))
 def change_password(payload: PasswordChangeRequest,
                     user: Annotated[AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])]):
     update_password(user, payload)

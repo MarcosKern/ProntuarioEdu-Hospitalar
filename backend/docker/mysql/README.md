@@ -18,7 +18,7 @@ O script cria `.env` a partir do exemplo apenas se ainda não existir. Depois ge
 
 O `.env` original é preservado. Repetir o script mantém as credenciais de `.env.mysql`, para continuar acessando um volume já inicializado. Não é necessário preencher uma URL de banco externo para esse modo.
 
-Configurações da aplicação, como `ALLOWED_HOSTS`, CORS e AUTH_JWT_SECRET, continuam no `.env`. O arquivo `.env.mysql` fornece apenas os parâmetros do banco/Compose; a senha root é enviada somente ao serviço MySQL. O serviço da API recebe uma URL com destino interno explícito `mysql:3306`, mesmo que exista outra `DATABASE_URL` exportada no terminal ou em um segredo do Codespace.
+Antes de subir a API, configure `AUTH_JWT_SECRET` no `.env` conforme [autenticação](../../AUTHENTICATION.md#configuração). `ALLOWED_HOSTS` e CORS também continuam nesse arquivo. O arquivo `.env.mysql` fornece apenas os parâmetros do banco/Compose; a senha root é enviada somente ao serviço MySQL. O serviço da API recebe uma URL com destino interno explícito `mysql:3306`, mesmo que exista outra `DATABASE_URL` exportada no terminal ou em um segredo do Codespace.
 
 ## 2. Construir e subir o ambiente
 
@@ -30,7 +30,7 @@ docker compose --env-file .env.mysql -f compose.yaml -f compose.mysql.yaml up --
 docker compose --env-file .env.mysql -f compose.yaml -f compose.mysql.yaml ps
 ```
 
-O Compose inicia MySQL e Redis. O entrypoint oficial do MySQL executa o SQL quando `/var/lib/mysql` está vazio. Seu health check exige conexão TCP e as 64 tabelas, 121 FKs e 40 CHECKs do domínio; a API aguarda esse estado, aplica suas migrações técnicas existentes e inicia o Uvicorn.
+O Compose inicia MySQL, Redis e a API. O entrypoint oficial do MySQL executa o SQL quando `/var/lib/mysql` está vazio. Seu health check exige conexão TCP e as 64 tabelas, 121 FKs e 40 CHECKs do domínio; a API aguarda esse estado, aplica suas migrações técnicas existentes e inicia o Uvicorn.
 
 As senhas geradas são compatíveis com a URL utilizada pelo Compose. Alterá-las manualmente exige também atualizar as contas dentro do MySQL já inicializado; mudar somente o arquivo não altera a senha armazenada no volume.
 
@@ -72,7 +72,7 @@ Para conferir a API pelo terminal:
 curl --fail --show-error http://127.0.0.1:8000/health
 ```
 
-Resultado esperado: `{"status":"ok","database":"ok"}`. No Codespace, configure o hostname em `ALLOWED_HOSTS` no `.env`, encaminhe a porta 8000 com visibilidade privada e abra `/docs`, conforme o [roteiro do backend](../../README.md#rodar-o-contêiner-de-desenvolvimento-e-acessar-a-api). Nos comandos desse roteiro, acrescente sempre `--env-file .env.mysql -f compose.yaml -f compose.mysql.yaml` ao usar este modo.
+Resultado esperado: `{"status":"ok","database":"ok"}`. Para entrar pelo Swagger, [crie o administrador explicitamente](../../ADMINISTRADOR.md) no serviço backend desse mesmo projeto; não existe usuário de aplicação automático. No Codespace, configure o hostname em `ALLOWED_HOSTS` no `.env`, encaminhe a porta 8000 com visibilidade privada e abra `/docs`, conforme o [roteiro do backend](../../README.md#rodar-o-contêiner-de-desenvolvimento-e-acessar-a-api). Nos comandos desse roteiro, acrescente sempre `--env-file .env.mysql -f compose.yaml -f compose.mysql.yaml` ao usar este modo.
 
 Se a porta 3306 estiver ocupada, ajuste `MYSQL_PORT` em `.env.mysql`. Isso altera apenas a porta publicada para o cliente; a API continua usando `mysql:3306`. Para mudar a porta HTTP publicada, acrescente `BACKEND_PORT` ao mesmo arquivo.
 
@@ -93,8 +93,8 @@ Alterações futuras do schema de um volume existente precisam de migrações pr
 
 O usuário técnico deste modo tem privilégios no database de desenvolvimento para permitir o Alembic e seus triggers. `log_bin_trust_function_creators=ON` é aplicado somente ao serviço MySQL deste modo. Uma implantação real exige contas de runtime e migração separadas, TLS e autorização operacional, conforme o [guia MySQL](../../MYSQL.md).
 
-## Verificações realizadas
+## Validação histórica do modo MySQL
 
-O teste integrado constrói as imagens atuais e usa um projeto Compose temporário, com portas aleatórias e volume exclusivo. Confere as 64 tabelas de domínio, 121 FKs, 40 CHECKs e 30 índices explícitos; aplica as migrações técnicas; consulta `/health` e `/docs`; testa rejeição de FK inválida, CHECK e duplicidade em índice UNIQUE condicional. Os dados de teste são revertidos e as tabelas de aplicação permanecem vazias.
+A verificação anterior usou um projeto Compose temporário, com portas aleatórias e volume exclusivo. Conferiu as 64 tabelas de domínio, 121 FKs, 40 CHECKs e 30 índices explícitos; aplicou as migrações técnicas; consultou `/health` e `/docs`; testou rejeição de FK inválida, CHECK e duplicidade em índice UNIQUE condicional. Os dados de teste foram revertidos e as tabelas de aplicação permaneceram vazias.
 
-Também reinicia o MySQL com o volume existente e verifica preservação do schema, da versão Alembic e recuperação da conexão da API. Os contêineres e volumes do teste são removidos ao final; o banco real não participa da validação. Isso valida infraestrutura e constraints, sem implementar Models, rotas clínicas ou as regras de negócio propostas.
+Também reiniciou o MySQL com o volume existente e verificou preservação do schema, da versão Alembic e recuperação da conexão da API. Os contêineres e volumes do teste foram removidos ao final; o banco real não participou da validação. Isso verificou infraestrutura e constraints naquele momento, sem implementar rotas clínicas ou as regras de negócio propostas. Os resultados atuais e as limitações de build desta nuvem estão no [acompanhamento F01](../../docs/F01.md).

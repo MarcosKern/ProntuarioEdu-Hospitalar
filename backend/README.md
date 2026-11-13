@@ -2,6 +2,8 @@
 
 Para iniciar com o usuário **`admin` do ProntuarioEdu**, perfil `ADMINISTRADOR` e login na própria API, consulte [primeiro administrador](ADMINISTRADOR.md). O cadastro é explícito e a senha fica somente como hash no MySQL.
 
+O [acompanhamento do card F01](docs/F01.md) registra as seis etapas concluídas, as confirmações e as evidências de MVC, MySQL, transações, [contratos HTTP](CONTRATOS.md), autenticação e Swagger. A conferência final aprovou 198 testes e as auditorias dos locks Python; o novo build e scan da imagem continuam pendentes pelo bloqueio de acesso ao repositório Alpine. Consulte o relatório para os limites da validação.
+
 > **Banco padrão: MySQL externo.** No Compose base, configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há fallback automático para banco local.
 
 Para desenvolvimento com o SQL recebido já inicializado em um serviço MySQL próprio, use o [modo opcional MySQL em contêiner](docker/mysql/README.md). O guia inclui preparação das credenciais, inicialização do schema, conexão do cliente e acesso à API no Codespace.
@@ -127,6 +129,7 @@ O botão **Authorize** solicita o token em `POST /api/v1/auth/token` na própria
 3. Abra a porta da API com `/docs`. Localmente: `http://127.0.0.1:8000/docs`. No Codespace, mantenha o hostname exato em `ALLOWED_HOSTS` e a porta privada.
 4. Use **Authorize** com usuário/senha e `identity:read`. Para o administrador, marque também `admin:access`.
 5. Execute `GET /api/v1/me`, `GET /api/v1/auth/session` ou `GET /api/v1/admin/me`. A autorização não fica persistida ao recarregar a página.
+6. Para encerrar a sessão no servidor, execute `POST /api/v1/auth/logout` antes de limpar a autorização na interface; a resposta é 204 sem corpo. O botão Logout do modal do Swagger apenas limpa o token da página.
 
 Não há client ID, client secret, callback ou realm. Sem token, as rotas protegidas respondem 401. `/health` continua público. Renovação e logout são rotas da própria API descritas no [guia de autenticação](AUTHENTICATION.md).
 
@@ -149,7 +152,7 @@ from prontuario_backend.views.auth import IdentityResponse
     tags=["Autenticação"],
     summary="Consultar a identidade autenticada",
     operation_id="get_current_identity",
-    description="Valida o JWT e a sessão no MySQL e retorna seu subject. Exige Bearer e o escopo identity:read.",
+    description="Valida o JWT e a sessão no MySQL. Exige Bearer e o escopo identity:read.",
     responses={
         status: ERROR_RESPONSES[status]
         for status in (401, 403, 405, 413, 429, 500, 503)
@@ -176,10 +179,12 @@ Ao alterar um endpoint real, mantenha a implementação e esses metadados coeren
 Para conferir esta pré-configuração sem banco, de `backend` e sem `MYSQL_TEST_URL` no ambiente:
 
 ```bash
-.venv/bin/python -m pytest -q tests/contract/test_swagger.py
+env MYSQL_TEST_URL= MYSQL_TEST_ALLOW_RESET= .venv/bin/python -m pytest -q \
+  tests/contract/test_swagger.py tests/contract/test_openapi.py \
+  tests/integration/test_security.py::test_production_hides_docs_and_metrics
 ```
 
-Os testes verificam o hostname do Codespace, a URL local de tokens e a exigência de autenticação. O teste de produção confere que a documentação responde 404.
+Os testes verificam o hostname do Codespace, a URL local de tokens, escopos, respostas e referências do contrato. O teste de produção confere que a documentação responde 404. O comando acima usa sintaxe Linux/Codespaces; no PowerShell, remova as variáveis de teste do processo e use o Python de `.venv\Scripts`.
 
 Em `tests/unit/`, validar texto vazio, coordenação e respostas. Em `tests/integration/`, verificar acesso negado sem gravação e persistência/transação no banco de teste. Em `tests/contract/`, verificar respostas e OpenAPI. A seção de ambiente descreve os testes iniciais implementados; os testes do exemplo clínico continuam futuros.
 
@@ -194,7 +199,7 @@ Siga os passos na ordem. Todos os comandos abaixo partem da pasta `backend`, den
 - Python **3.12** com pip e venv para execução local e testes.
 - Acesso de rede a **MySQL 8.4 externo**, com banco de desenvolvimento dedicado e credenciais fornecidas pelo responsável.
 - Docker Engine ou Docker Desktop em execução e Docker Compose **2.24 ou posterior** para o caminho com contêineres. Confira `docker version`, `docker compose version` e `docker info`. Consulte a [instalação oficial](https://docs.docker.com/engine/install/) ou [Docker Desktop](https://docs.docker.com/desktop/).
-- A instalação de pacotes necessita acesso ao PyPI; o build necessita acesso ao registry Docker. Redes corporativas podem exigir proxy e CA confiável.
+- A instalação de pacotes necessita acesso ao PyPI; o build utiliza registry Docker, PyPI e repositórios oficiais Alpine. Redes corporativas podem exigir proxy e CA confiável.
 
 Python local é opcional para executar somente Compose; os comandos de teste e backup deste guia usam o venv. Não é necessário instalar MySQL localmente. Desktop e Web ainda não possuem aplicação ou comandos de execução.
 
@@ -206,6 +211,7 @@ Em Linux/macOS, da raiz do repositório:
 cd backend
 # Não sobrescreve configuração existente.
 [ -f .env ] || cp .env.example .env
+chmod 600 .env
 ```
 
 No PowerShell:
@@ -249,6 +255,8 @@ py -3.12 -m venv .venv
 
 Como alternativa à criação/instalação manual, `python3 scripts/dev.py --setup` (Windows: `py -3.12 scripts/dev.py --setup`) cria o venv se necessário, instala os requisitos, aplica migrações e inicia a API. Esse comando também exige `.env` previamente configurado.
 
+O script aplica migrations antes de iniciar Uvicorn: uma falha nessa etapa impede a abertura da API. Depois de iniciada, a API responde 503 em `/health` se perder acesso SQL.
+
 O servidor ocupa o terminal. Use outro terminal para verificações e testes; Ctrl+C encerra a execução. Para trocar a porta, use `python scripts/dev.py --port 8001`. O script sempre executa a partir de `backend`, mesmo que seja chamado por caminho completo.
 
 Sem `REDIS_URL`, o limite de requisições é em memória e por processo, permitido somente para desenvolvimento/testes. Para testar o limite distribuído no modo local, configure uma instância Redis acessível pela máquina. O Redis do Compose fica privado e não está publicado para o Python local.
@@ -263,7 +271,7 @@ docker compose up --build -d --wait
 docker compose ps
 ```
 
-O Compose inicia **API e Redis**, não MySQL. A API fica na porta local 8000, com reload do código montado em modo leitura. O volume é de código; não existe volume de banco neste projeto. `BACKEND_PORT=8001` em `.env` altera somente a porta publicada pelo Compose.
+O Compose inicia **API e Redis**, não MySQL. A API fica na porta local 8000, com reload do código montado em modo leitura. Neste Compose base, os volumes são de código; o volume de banco pertence somente ao modo MySQL opcional. `BACKEND_PORT=8001` em `.env` altera somente a porta publicada pelo Compose.
 
 Comandos de acompanhamento e encerramento:
 
@@ -297,6 +305,22 @@ Resultado esperado: `{"status":"ok","database":"ok"}`. Isso confirma uma consult
 
 A API ainda não possui o endpoint de anotação do pseudocódigo acima. Nenhum prontuário ou usuário de demonstração é carregado. `/health` não comprova login; valide usuário/senha e uma chamada protegida pelo Swagger.
 
+### Criar o administrador e entrar
+
+A saúde SQL não cria usuários nem comprova que o schema de domínio está instalado. Para login local, configure `AUTH_JWT_SECRET` e tenha `cadastro__usuarios` e as demais tabelas de autenticação disponíveis. MySQL externo exige a instalação inicial autorizada pelo responsável; o modo opcional inicializa esse DDL em volume vazio.
+
+No mesmo ambiente escolhido acima, execute um dos comandos:
+
+| Execução da API | Comando, de `backend` |
+| --- | --- |
+| Python local | `.venv/bin/python scripts/create_admin.py` |
+| Compose base / MySQL externo | `docker compose exec backend python scripts/create_admin.py` |
+| Compose com MySQL opcional | `docker compose --env-file .env.mysql -f compose.yaml -f compose.mysql.yaml exec backend python scripts/create_admin.py` |
+
+Digite a senha no prompt e depois use **Authorize** em `/docs`. Preserve o mesmo nome de projeto Compose se tiver usado `--project-name`. Para converter uma conta externa já existente, consulte [ADMINISTRADOR.md](ADMINISTRADOR.md); repetir o cadastro local não redefine senha nem permissões.
+
+A tabela completa de rotas está em [autenticação](AUTHENTICATION.md#contratos-implementados). Para importar/exportar o OpenAPI no Postman ou revisar contratos, siga [contracts/openapi](../contracts/openapi/README.md).
+
 ### 5. Executar testes e verificações
 
 Use **outro terminal**, entre em `backend` e ative o mesmo venv (ou utilize o caminho explícito do Python no Windows):
@@ -328,7 +352,7 @@ O caminho é específico do host; adapte para um bundle confiável existente no 
 
 | Sintoma | Verificação |
 | --- | --- |
-| `Configuração inválida` | `DATABASE_URL` preenchida com prefixo `mysql+pymysql://`; arrays JSON válidos; variáveis antigas exportadas; diretório de execução |
+| `Configuração inválida` | `DATABASE_URL` com driver `mysql+pymysql`, servidor, database e porta válida; arrays JSON válidos; variáveis antigas exportadas; diretório de execução |
 | Falha nas migrações | Rede/firewall, hostname externo, TLS e privilégios de migração/trigger; consultar o DBA sem expor URL ou senha |
 | Erro de CA no Docker | Arquivo montado no contêiner e caminho interno correto em `MYSQL_SSL_CA`; a CA do build não substitui essa montagem |
 | 400 ao acessar a API | Host solicitado não está em `ALLOWED_HOSTS`; não liberar wildcard como solução |
@@ -340,7 +364,7 @@ Não use este Compose com reload como implantação de produção. Retenção, b
 
 ## Dependências de execução e desenvolvimento
 
-`requirements.in` declara as dependências diretas da API, migrações e backup. `requirements.txt` fixa a resolução de runtime (27 pacotes nesta versão) e é o único lock instalado na imagem. Alembic permanece nele porque o startup de desenvolvimento executa migrações.
+`requirements.in` declara as dependências diretas da API, migrações e backup. `requirements.txt` fixa a resolução de runtime e é o único lock instalado na imagem. Alembic permanece nele porque o startup de desenvolvimento executa migrações.
 
 `requirements-dev.in` acrescenta testes, lint, auditoria e manutenção dos locks; `requirements-dev.txt` fixa o conjunto completo de desenvolvimento. O script `dev.py --setup` e a CI instalam esse arquivo. Ferramentas de desenvolvimento e suas transitivas não são necessárias na imagem da API.
 
@@ -363,7 +387,7 @@ Os timeouts de conexão, leitura, escrita e espera do pool MySQL são configurá
 
 Este passo a passo usa o Docker Compose do Back-end **dentro do Codespace**. Primeiro, crie ou reconstrua o Codespace conforme o [guia de configuração](../.devcontainer/README.md#passo-a-passo-para-executar-a-configuração-no-github). O contêiner do Codespace fornece o editor e as ferramentas; o Compose cria os serviços da API e do Redis nesse ambiente.
 
-O banco e a arquitetura enviados pelo responsável continuam adiados. Os comandos abaixo descrevem a execução da implementação técnica existente; não importam os anexos. **Ao subir a API, o Compose aplica as migrações Alembic existentes no MySQL configurado. Execute essa etapa somente quando houver um banco de desenvolvimento autorizado.**
+Este roteiro usa o Compose base com MySQL externo. O [modo MySQL opcional](docker/mysql/README.md) é a ação separada que inicializa o SQL de domínio em volume vazio; a configuração do editor não faz essa importação. **Ao subir a API, o Compose aplica as migrações Alembic existentes no MySQL configurado. Execute essa etapa somente quando houver um banco de desenvolvimento autorizado.**
 
 #### 1. Abrir o terminal e conferir o Docker
 
@@ -391,6 +415,7 @@ O Codespace normalmente já criou `backend/.env`. Caso o arquivo ainda não exis
 
 ```bash
 [ -f .env ] || cp .env.example .env
+chmod 600 .env
 ```
 
 Abra esse arquivo no editor e mantenha `APP_ENV=development` para disponibilizar o Swagger. Configure `DATABASE_URL` com o MySQL externo de desenvolvimento conforme o [guia MySQL](MYSQL.md#preparar-a-conexão). A conexão precisa funcionar de dentro do contêiner; `localhost` não representa o servidor externo. Não é necessário instalar MySQL Server no Codespace.

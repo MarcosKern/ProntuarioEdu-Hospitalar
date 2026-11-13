@@ -7,6 +7,7 @@ from urllib.parse import parse_qs
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, Request
+from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
@@ -20,7 +21,7 @@ from prontuario_backend.config.auth import (
 from prontuario_backend.config.database import engine
 from prontuario_backend.config.settings import get_settings
 from prontuario_backend.models import users
-from prontuario_backend.views.auth import SessionResponse, TokenResponse
+from prontuario_backend.views.auth import LoginRequest, SessionResponse, TokenResponse
 
 # Hash de comparação para logins inexistentes; nenhuma senha real e nenhum I/O na importação.
 DUMMY_HASH = "scrypt$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -65,18 +66,19 @@ def login(username, password, requested):
 
 
 async def token_endpoint(request: Request):
-    if request.headers.get("content-type", "").split(";")[0].strip() != "application/x-www-form-urlencoded":
+    if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/x-www-form-urlencoded":
         raise HTTPException(415, "Envie formulário application/x-www-form-urlencoded")
     try:
-        form = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True, max_num_fields=10)
+        form = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True, max_num_fields=10, errors="strict")
     except (ValueError, UnicodeError):
         raise HTTPException(400, "Formulário de login inválido") from None
-    if any(len(values) != 1 for values in form.values()) or form.get("grant_type") != ["password"]:
-        raise HTTPException(400, "Utilize grant_type=password")
-    username, password = form.get("username", [""])[0], form.get("password", [""])[0]
-    if not 1 <= len(username) <= 150 or not 1 <= len(password) <= 128:
-        raise HTTPException(401, "Usuário ou senha inválidos", headers={"WWW-Authenticate": "Bearer"})
-    return await run_in_threadpool(login, username, password, form.get("scope", [""])[0])
+    if any(len(values) != 1 for values in form.values()):
+        raise HTTPException(400, "Campos repetidos no formulário de login")
+    try:
+        payload = LoginRequest.model_validate({key: values[0] for key, values in form.items()})
+    except ValidationError:
+        raise HTTPException(400, "Formulário de login inválido") from None
+    return await run_in_threadpool(login, payload.username, payload.password.get_secret_value(), payload.scope)
 
 
 def refresh_access(payload):
