@@ -53,11 +53,13 @@ Sem MYSQL_TEST_URL, testes dependentes de banco são **pulados**, não aprovados
 | `unit/test_startup.py` | Inicialização e documentação sem conexão ou cadastro automático |
 | `unit/test_contracts.py` | Entradas e saídas tipadas, campos desconhecidos e credenciais protegidas |
 | `unit/test_pagination.py` | Limites da paginação, itens públicos e consistência da resposta |
+| `unit/test_test_env_output.py` | Exibição das conexões públicas somente com serviços saudáveis, sem revelar a chave JWT |
 | `integration/test_security.py` | Configuração, limites, headers, CORS, migrações e autorização/auditoria |
 | `integration/test_mysql.py` | Migrações MySQL e proteção de auditoria contra exclusão |
 | `integration/test_transactions.py` | Commit/rollback, falha de unicidade, reutilização da sessão e retorno de conexões ao pool |
 | `integration/test_migrations.py` | Migrações incrementais sem seeds, InnoDB/UTC, preservação dos dados e correspondência com os Models |
 | `contract/test_swagger.py` | Contrato do login local e documentação na origem do Codespace |
+| `contract/test_openapi.py` | Oito operações, IDs, descrições, schemas de sucesso/erro, escopos, referências, limites e exportação JSON |
 | `contract/test_http_contracts.py` | Validação HTTP, envelope de erros, entrada do login e paginação em rotas exclusivas dos testes |
 
 Os testes usam chave JWT isolada e MySQL descartável para login, refresh, logout, troca de senha e revogação. Não configuram contas na aplicação. Os testes existentes também não representam cobertura de funcionalidades clínicas ainda não implementadas. Consulte [MYSQL.md](../MYSQL.md#testes) e [SECURITY.md](../SECURITY.md).

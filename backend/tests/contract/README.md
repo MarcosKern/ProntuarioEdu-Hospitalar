@@ -4,4 +4,6 @@ Conferir se métodos, caminhos, esquemas, códigos de resposta e segurança da A
 
 `test_swagger.py` verifica o Swagger no hostname encaminhado do Codespace, login local na mesma origem, formulário de token, ausência de persistência da autorização e segurança da operação de identidade. O contrato de Swagger não depende de um banco ativo. O teste de ocultação em produção permanece em `../integration/test_security.py`.
 
+`test_openapi.py` confere as oito operações publicadas, IDs únicos, descrições, contratos de sucesso/erro, escopos, UUIDs, limites e headers de protocolo. Verifica também as referências internas e a exportação JSON, impedindo conexões ao MySQL e a presença da chave JWT no documento. O [guia OpenAPI](../../../contracts/openapi/README.md) explica como consultar e exportar o contrato da API iniciada.
+
 `test_http_contracts.py` verifica validação antes da lógica de login/refresh/troca de senha, campos desconhecidos, limites, UTF-8 e tipo de conteúdo, envelope de erros e ausência de dados sensíveis. Rotas registradas somente na aplicação do teste exercitam a paginação e as respostas inválidas, sem acrescentar endpoints à API publicada ou consultar banco. As regras estão em [CONTRATOS.md](../../CONTRATOS.md).

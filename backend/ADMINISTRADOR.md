@@ -17,6 +17,8 @@ O comando pede a senha duas vezes, sem exibi-la. Use de 12 a 128 caracteres e gu
 
 Para Python local, com `.env` apontando deliberadamente ao banco de desenvolvimento correto, execute `.venv/bin/python scripts/create_admin.py`. O comando altera o banco configurado nessa execução.
 
+No Compose base com MySQL externo, use `docker compose exec backend python scripts/create_admin.py`, após a instalação autorizada do schema de domínio. Para o ambiente com credenciais SQL fixas, siga a [configuração de login do Compose de testes](docker/mysql/TESTING.md#habilitar-o-login-da-aplicação-neste-ambiente); sua porta padrão é 8001 e o banco da API é separado do banco descartável da suíte.
+
 O cadastro cria usuário, perfil, permissão e auditoria em uma transação. Reexecutá-lo preserva a senha do admin local existente; não reativa usuários nem refaz concessões revogadas. Não há pacientes ou contas de demonstração automáticas.
 
 ## Se já havia administrador externo

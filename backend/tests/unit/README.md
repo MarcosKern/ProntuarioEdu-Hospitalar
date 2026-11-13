@@ -9,6 +9,8 @@ Na etapa 1 do [card F01](../../docs/F01.md), foram implementados:
 
 A etapa 3 acrescenta `test_contracts.py`, com entradas/saídas tipadas e credenciais fora das representações textuais, e `test_pagination.py`, com limites, campos públicos e consistência da página.
 
+A etapa 5 acrescenta `test_test_env_output.py`: com substitutos do processo Docker, verifica que o script só exibe as conexões SQL públicas após os três serviços ficarem saudáveis e nunca imprime a chave JWT opcional. Não inicia contêineres nem consulta banco.
+
 De `backend`, no terminal Linux/Codespaces, com as dependências instaladas:
 
 ```bash
