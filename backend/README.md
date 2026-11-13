@@ -2,7 +2,7 @@
 
 Para iniciar com o usuário **`admin` do ProntuarioEdu**, perfil `ADMINISTRADOR` e login na própria API, consulte [primeiro administrador](ADMINISTRADOR.md). O cadastro é explícito e a senha fica somente como hash no MySQL.
 
-O [acompanhamento do card F01](docs/F01.md) registra a execução por etapas, as confirmações e as evidências. As etapas 1 a 3 validaram MVC, MySQL, transações e [contratos HTTP](CONTRATOS.md); a etapa 4 comprovou saúde e identidade sob falhas SQL e tokens inválidos. A etapa 5 revisou o Swagger e os roteiros de execução, com login e logout conferidos no navegador; a conferência final depende da etapa 6.
+O [acompanhamento do card F01](docs/F01.md) registra as seis etapas concluídas, as confirmações e as evidências de MVC, MySQL, transações, [contratos HTTP](CONTRATOS.md), autenticação e Swagger. A conferência final aprovou 198 testes e as auditorias dos locks Python; o novo build e scan da imagem continuam pendentes pelo bloqueio de acesso ao repositório Alpine. Consulte o relatório para os limites da validação.
 
 > **Banco padrão: MySQL externo.** No Compose base, configure DATABASE_URL conforme o [guia MySQL](MYSQL.md) antes de executar. Não há fallback automático para banco local.
 
