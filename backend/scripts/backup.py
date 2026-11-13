@@ -1,4 +1,5 @@
 """Encrypted backups of the configured external MySQL; isolated restore verification."""
+
 import argparse
 import os
 import subprocess
@@ -12,7 +13,11 @@ from sqlalchemy.engine import make_url
 
 
 def quoted(value):
-    return '"' + str(value).replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n') + '"'
+    return (
+        '"'
+        + str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+        + '"'
+    )
 
 
 def main():
@@ -36,9 +41,19 @@ def main():
         parser.error("--file is required")
     with tempfile.TemporaryDirectory() as directory:
         config = Path(directory) / "mysql.cnf"
-        content = "[client]\n" + "\n".join(f"{key}={quoted(value)}" for key, value in {
-            "host": url.host, "port": url.port or 3306, "user": url.username, "password": url.password or ""
-        }.items()) + "\n"
+        content = (
+            "[client]\n"
+            + "\n".join(
+                f"{key}={quoted(value)}"
+                for key, value in {
+                    "host": url.host,
+                    "port": url.port or 3306,
+                    "user": url.username,
+                    "password": url.password or "",
+                }.items()
+            )
+            + "\n"
+        )
         ca = os.getenv("MYSQL_SSL_CA")
         if os.getenv("APP_ENV") == "production" and not ca:
             parser.error("Production MySQL backup requires MYSQL_SSL_CA")
@@ -46,18 +61,45 @@ def main():
             content += "ssl-mode=VERIFY_IDENTITY\nssl-ca=/run/mysql-ca.pem\n"
         config.write_text(content)
         config.chmod(0o600)
-        docker = ["docker", "run", "--rm", "-i", "--mount", f"type=bind,src={config},dst=/run/mysql.cnf,readonly"]
+        docker = [
+            "docker",
+            "run",
+            "--rm",
+            "-i",
+            "--mount",
+            f"type=bind,src={config},dst=/run/mysql.cnf,readonly",
+        ]
         if ca:
-            docker += ["--mount", f"type=bind,src={Path(ca).resolve()},dst=/run/mysql-ca.pem,readonly"]
+            docker += [
+                "--mount",
+                f"type=bind,src={Path(ca).resolve()},dst=/run/mysql-ca.pem,readonly",
+            ]
         if os.getenv("MYSQL_CLIENT_NETWORK"):
             docker += ["--network", os.environ["MYSQL_CLIENT_NETWORK"]]
 
         def client(program, *params, **kwargs):
-            return subprocess.run(docker + ["mysql:8.4", program, "--defaults-extra-file=/run/mysql.cnf", *params], check=True, **kwargs)
+            return subprocess.run(
+                docker
+                + [
+                    "mysql:8.4",
+                    program,
+                    "--defaults-extra-file=/run/mysql.cnf",
+                    *params,
+                ],
+                check=True,
+                **kwargs,
+            )
 
         if args.operation == "backup":
             with tempfile.TemporaryFile() as dump:
-                client("mysqldump", "--single-transaction", "--no-tablespaces", "--set-gtid-purged=OFF", url.database, stdout=dump)
+                client(
+                    "mysqldump",
+                    "--single-transaction",
+                    "--no-tablespaces",
+                    "--set-gtid-purged=OFF",
+                    url.database,
+                    stdout=dump,
+                )
                 dump.seek(0)
                 payload = cipher.encrypt(dump.read())
             fd = os.open(args.file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -69,7 +111,12 @@ def main():
             client("mysql", "-e", f"CREATE DATABASE `{scratch}`")
             try:
                 client("mysql", scratch, input=payload)
-                client("mysql", scratch, "-e", "SELECT version_num FROM alembic_version; SELECT count(*) FROM audit_events; SELECT count(*) FROM record_permissions;")
+                client(
+                    "mysql",
+                    scratch,
+                    "-e",
+                    "SELECT version_num FROM alembic_version; SELECT count(*) FROM audit_events; SELECT count(*) FROM record_permissions;",
+                )
             finally:
                 client("mysql", "-e", f"DROP DATABASE `{scratch}`")
     print("Operation completed; configured database was not overwritten.")

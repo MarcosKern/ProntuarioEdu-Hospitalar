@@ -42,7 +42,9 @@ class LoginRequest(BaseModel):
     password: SecretStr = Field(min_length=1, max_length=128)
     scope: str = Field(default="", max_length=MAX_SCOPE_LENGTH)
     client_id: Literal[""] = Field(default="", description="Login local: deixar vazio")
-    client_secret: Literal[""] = Field(default="", repr=False, description="Login local: deixar vazio")
+    client_secret: Literal[""] = Field(
+        default="", repr=False, description="Login local: deixar vazio"
+    )
 
 
 class RefreshRequest(BaseModel):

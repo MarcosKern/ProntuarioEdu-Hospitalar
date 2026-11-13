@@ -10,7 +10,9 @@ from sqlalchemy.exc import ArgumentError
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
+    model_config = SettingsConfigDict(
+        env_file=".env", extra="ignore", hide_input_in_errors=True
+    )
     app_env: Literal["development", "test", "production"] = "development"
     database_url: SecretStr
     mysql_ssl_ca: str = ""
@@ -37,9 +39,16 @@ class Settings(BaseSettings):
     def validate_environment(self):
         if self.max_body_bytes < 1 or self.rate_limit < 1:
             raise ValueError("Limits must be positive")
-        if not self.allowed_hosts or "*" in self.allowed_hosts or "*" in self.cors_origins:
+        if (
+            not self.allowed_hosts
+            or "*" in self.allowed_hosts
+            or "*" in self.cors_origins
+        ):
             raise ValueError("Explicit hosts and origins required")
-        if self.auth_jwt_secret and len(self.auth_jwt_secret.get_secret_value().encode()) < 32:
+        if (
+            self.auth_jwt_secret
+            and len(self.auth_jwt_secret.get_secret_value().encode()) < 32
+        ):
             raise ValueError("JWT signing secret requires at least 32 bytes")
         if not self.auth_jwt_issuer or not self.auth_jwt_audience:
             raise ValueError("JWT issuer and audience are required")
@@ -49,11 +58,20 @@ class Settings(BaseSettings):
             raise ValueError("Invalid MySQL connection URL") from None
         if database.drivername != "mysql+pymysql":
             raise ValueError("MySQL with PyMySQL is required")
-        if not database.host or not database.host.strip() or not database.database or not database.database.strip():
+        if (
+            not database.host
+            or not database.host.strip()
+            or not database.database
+            or not database.database.strip()
+        ):
             raise ValueError("MySQL requires an explicit server and database name")
         if database.port is not None and not 1 <= database.port <= 65535:
             raise ValueError("Invalid MySQL server port")
-        if any(key.lower().startswith("ssl") or key.lower() in {"connect_timeout", "read_timeout", "write_timeout"} for key in database.query):
+        if any(
+            key.lower().startswith("ssl")
+            or key.lower() in {"connect_timeout", "read_timeout", "write_timeout"}
+            for key in database.query
+        ):
             raise ValueError("Configure MySQL TLS and timeouts through settings")
         for ca in (self.mysql_ssl_ca, self.redis_ssl_ca):
             if ca and not Path(ca).is_file():
@@ -62,13 +80,22 @@ class Settings(BaseSettings):
             redis = urlsplit(self.redis_url.get_secret_value())
             if redis.scheme not in {"redis", "rediss"} or not redis.hostname:
                 raise ValueError("Invalid Redis URL")
-            reserved = {"ssl_cert_reqs", "ssl_check_hostname", "socket_timeout", "socket_connect_timeout", "retry_on_timeout"}
+            reserved = {
+                "ssl_cert_reqs",
+                "ssl_check_hostname",
+                "socket_timeout",
+                "socket_connect_timeout",
+                "retry_on_timeout",
+            }
             if reserved.intersection(key.lower() for key in parse_qs(redis.query)):
                 raise ValueError("Configure Redis TLS and timeouts through settings")
         if self.app_env == "production":
             if not self.mysql_ssl_ca:
                 raise ValueError("Production MySQL requires a trusted CA")
-            if self.redis_url and urlsplit(self.redis_url.get_secret_value()).scheme != "rediss":
+            if (
+                self.redis_url
+                and urlsplit(self.redis_url.get_secret_value()).scheme != "rediss"
+            ):
                 raise ValueError("Production Redis requires TLS")
             if not self.redis_url or not self.auth_jwt_secret:
                 raise ValueError("Production requires Redis and a JWT signing secret")
@@ -83,4 +110,6 @@ def get_settings():
         return Settings()
     except ValidationError:
         # Do not expose connection strings or other input values in startup errors.
-        raise RuntimeError("Configuração inválida; confira as variáveis do ambiente") from None
+        raise RuntimeError(
+            "Configuração inválida; confira as variáveis do ambiente"
+        ) from None

@@ -15,7 +15,9 @@ BACKEND = Path(__file__).resolve().parents[2]
 TECHNICAL_TABLES = {"alembic_version", "record_permissions", "audit_events"}
 
 
-def test_incremental_migrations_create_only_empty_technical_tables_on_mysql84(mysql_url):
+def test_incremental_migrations_create_only_empty_technical_tables_on_mysql84(
+    mysql_url,
+):
     config = Config(str(BACKEND / "alembic.ini"))
     database = engine()
     assert inspect(database).get_table_names() == []
@@ -29,40 +31,74 @@ def test_incremental_migrations_create_only_empty_technical_tables_on_mysql84(my
         with database.connect() as connection:
             assert connection.scalar(text("SELECT VERSION()")).startswith("8.4.")
             assert connection.scalar(text("SELECT @@session.time_zone")) == "+00:00"
-            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == ScriptDirectory.from_config(config).get_revision(target).revision
+            assert (
+                connection.scalar(text("SELECT version_num FROM alembic_version"))
+                == ScriptDirectory.from_config(config).get_revision(target).revision
+            )
             for table in (RecordPermission, AuditEvent):
                 assert connection.scalar(select(func.count()).select_from(table)) == 0
-            assert set(connection.scalars(text("""
+            assert set(
+                connection.scalars(
+                    text("""
                 SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()
-            """))) == {"InnoDB"}
-            triggers = set(connection.scalars(text("""
+            """)
+                )
+            ) == {"InnoDB"}
+            triggers = set(
+                connection.scalars(
+                    text("""
                 SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE()
-            """)))
+            """)
+                )
+            )
             assert triggers == expected_triggers
             if expected_collation:
-                collations = list(connection.scalars(text("""
+                collations = list(
+                    connection.scalars(
+                        text("""
                     SELECT COLLATION_NAME FROM information_schema.COLUMNS
                     WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('record_permissions','audit_events') AND COLUMN_NAME='subject'
-                """)))
+                """)
+                    )
+                )
                 assert collations == [expected_collation, expected_collation]
     assert database.pool.checkedout() == 0
 
 
-def test_repeated_upgrade_preserves_existing_permissions_and_append_only_audit(mysql_url):
+def test_repeated_upgrade_preserves_existing_permissions_and_append_only_audit(
+    mysql_url,
+):
     config = Config(str(BACKEND / "alembic.ini"))
     command.upgrade(config, "head")
     database = engine()
     subject, record = str(uuid4()), str(uuid4())
     with database.begin() as connection:
-        connection.execute(insert(RecordPermission).values(subject=subject, record_id=record, action="read"))
-        connection.execute(insert(AuditEvent).values(subject=subject, record_id=record, action="read",
-                                                   outcome="allowed", request_id=str(uuid4())))
+        connection.execute(
+            insert(RecordPermission).values(
+                subject=subject, record_id=record, action="read"
+            )
+        )
+        connection.execute(
+            insert(AuditEvent).values(
+                subject=subject,
+                record_id=record,
+                action="read",
+                outcome="allowed",
+                request_id=str(uuid4()),
+            )
+        )
     with database.connect() as connection:
-        before = [connection.execute(select(table)).all() for table in (RecordPermission, AuditEvent)]
+        before = [
+            connection.execute(select(table)).all()
+            for table in (RecordPermission, AuditEvent)
+        ]
     command.upgrade(config, "head")
     command.upgrade(config, "head")
     with database.connect() as connection:
-        assert [connection.execute(select(table)).all() for table in (RecordPermission, AuditEvent)] == before
+        assert [
+            connection.execute(select(table)).all()
+            for table in (RecordPermission, AuditEvent)
+        ] == before
         assert all(len(rows) == 1 for rows in before)
     assert database.pool.checkedout() == 0
 

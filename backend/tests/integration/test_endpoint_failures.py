@@ -25,18 +25,43 @@ def assert_error(response, status):
     assert response.headers["cache-control"] == "no-store"
 
 
-@pytest.mark.parametrize("kind", ["missing", "basic", "malformed", "expired", "wrong_signature"])
-def test_identity_rejects_invalid_credentials_before_any_sql_access(monkeypatch, kind, caplog):
+@pytest.mark.parametrize(
+    "kind", ["missing", "basic", "malformed", "expired", "wrong_signature"]
+)
+def test_identity_rejects_invalid_credentials_before_any_sql_access(
+    monkeypatch, kind, caplog
+):
     monkeypatch.setenv("AUTH_JWT_SECRET", SIGNING_SECRET)
     get_settings.cache_clear()
-    token, _ = issue_access_token(str(uuid4()), str(uuid4()), frozenset({"identity:read"}))
+    token, _ = issue_access_token(
+        str(uuid4()), str(uuid4()), frozenset({"identity:read"})
+    )
     if kind in {"expired", "wrong_signature"}:
-        claims = jwt.decode(token, SIGNING_SECRET, algorithms=["HS256"], audience="prontuario-api", issuer="prontuarioedu")
+        claims = jwt.decode(
+            token,
+            SIGNING_SECRET,
+            algorithms=["HS256"],
+            audience="prontuario-api",
+            issuer="prontuarioedu",
+        )
         if kind == "expired":
             claims["iat"], claims["exp"] = int(time.time()) - 120, int(time.time()) - 60
-        key = SIGNING_SECRET if kind == "expired" else "other-isolated-signing-key-with-at-least-32-bytes"
+        key = (
+            SIGNING_SECRET
+            if kind == "expired"
+            else "other-isolated-signing-key-with-at-least-32-bytes"
+        )
         token = jwt.encode(claims, key, algorithm="HS256")
-    headers = {} if kind == "missing" else {"Authorization": {"basic": "Basic ignored", "malformed": "Bearer malformed"}.get(kind, "Bearer " + token)}
+    headers = (
+        {}
+        if kind == "missing"
+        else {
+            "Authorization": {
+                "basic": "Basic ignored",
+                "malformed": "Bearer malformed",
+            }.get(kind, "Bearer " + token)
+        }
+    )
     calls = []
 
     def forbidden(*args, **kwargs):
@@ -45,7 +70,9 @@ def test_identity_rejects_invalid_credentials_before_any_sql_access(monkeypatch,
 
     monkeypatch.setattr(Engine, "connect", forbidden)
     with TestClient(create_app(), base_url="http://localhost") as client:
-        response = client.get("/api/v1/me", params={"access_token": token}, headers=headers)
+        response = client.get(
+            "/api/v1/me", params={"access_token": token}, headers=headers
+        )
     assert_error(response, 401)
     assert calls == []
     assert "subject" not in response.json()
@@ -63,7 +90,10 @@ def test_http_endpoints_bound_a_real_stalled_sql_handshake(monkeypatch, path, ca
         listener.listen(1)
         listener.settimeout(1)
         port = listener.getsockname()[1]
-        monkeypatch.setenv("DATABASE_URL", f"mysql+pymysql://isolated:never-log-this-db-password@127.0.0.1:{port}/prontuario_test")
+        monkeypatch.setenv(
+            "DATABASE_URL",
+            f"mysql+pymysql://isolated:never-log-this-db-password@127.0.0.1:{port}/prontuario_test",
+        )
         monkeypatch.setenv("MYSQL_SSL_CA", "")
         monkeypatch.setenv("MYSQL_READ_TIMEOUT", "0.2")
         monkeypatch.setenv("AUTH_JWT_SECRET", SIGNING_SECRET)
@@ -81,17 +111,27 @@ def test_http_endpoints_bound_a_real_stalled_sql_handshake(monkeypatch, path, ca
 
         worker = threading.Thread(target=stalled_server, daemon=True)
         worker.start()
-        token, _ = issue_access_token(str(uuid4()), str(uuid4()), frozenset({"identity:read"}))
+        token, _ = issue_access_token(
+            str(uuid4()), str(uuid4()), frozenset({"identity:read"})
+        )
         try:
             with TestClient(create_app(), base_url="http://localhost") as client:
                 started = time.monotonic()
-                response = client.get(path, headers={"Authorization": "Bearer " + token})
+                response = client.get(
+                    path, headers={"Authorization": "Bearer " + token}
+                )
                 elapsed = time.monotonic() - started
             assert accepted.is_set()
             assert elapsed < 2
             assert_error(response, 503)
             combined = response.text + caplog.text
-            for private in (token, SIGNING_SECRET, "never-log-this-db-password", "pymysql.err", "Traceback"):
+            for private in (
+                token,
+                SIGNING_SECRET,
+                "never-log-this-db-password",
+                "pymysql.err",
+                "Traceback",
+            ):
                 assert private not in combined
             assert engine().pool.checkedout() == 0
         finally:

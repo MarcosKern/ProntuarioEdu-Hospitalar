@@ -158,7 +158,11 @@ from prontuario_backend.views.auth import IdentityResponse
         for status in (401, 403, 405, 413, 429, 500, 503)
     },
 )
-def identity(user: Annotated[AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])]):
+def identity(
+    user: Annotated[
+        AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])
+    ],
+):
     return IdentityResponse(subject=user.subject)
 ```
 

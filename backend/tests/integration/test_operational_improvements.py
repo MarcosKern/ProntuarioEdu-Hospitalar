@@ -11,11 +11,23 @@ from prontuario_backend.main import create_app
 from prontuario_backend.views.errors import ErrorResponse
 
 
-@pytest.mark.parametrize("field", ["mysql_connect_timeout", "mysql_read_timeout", "mysql_write_timeout", "mysql_pool_timeout"])
+@pytest.mark.parametrize(
+    "field",
+    [
+        "mysql_connect_timeout",
+        "mysql_read_timeout",
+        "mysql_write_timeout",
+        "mysql_pool_timeout",
+    ],
+)
 @pytest.mark.parametrize("value", [0, -1, 121])
 def test_sql_timeouts_must_be_bounded(field, value):
     with pytest.raises(ValidationError):
-        Settings(_env_file=None, database_url="mysql+pymysql://unused@localhost/review", **{field: value})
+        Settings(
+            _env_file=None,
+            database_url="mysql+pymysql://unused@localhost/review",
+            **{field: value},
+        )
 
 
 def test_sql_driver_uses_configured_timeouts(monkeypatch):
@@ -43,14 +55,20 @@ def test_sql_driver_uses_configured_timeouts(monkeypatch):
 
 def test_openapi_matches_error_responses(monkeypatch):
     from prontuario_backend.controllers import health
+
     monkeypatch.setattr(health, "database_ready", lambda: False)
     with TestClient(create_app(), base_url="http://localhost") as client:
         schema = client.get("/openapi.json").json()
         assert "ErrorResponse" in schema["components"]["schemas"]
-        for path, statuses in [("/health", [413, 500, 503]), ("/api/v1/me", [401, 413, 429, 500, 503])]:
+        for path, statuses in [
+            ("/health", [413, 500, 503]),
+            ("/api/v1/me", [401, 413, 429, 500, 503]),
+        ]:
             for status in statuses:
                 response = schema["paths"][path]["get"]["responses"][str(status)]
-                assert response["content"]["application/json"]["schema"]["$ref"].endswith("/ErrorResponse")
+                assert response["content"]["application/json"]["schema"][
+                    "$ref"
+                ].endswith("/ErrorResponse")
         for path, status in [("/health", 503), ("/api/v1/me", 401)]:
             response = client.get(path)
             assert response.status_code == status
@@ -71,11 +89,17 @@ def test_internal_error_logs_location_without_sensitive_values(caplog):
     assert response.status_code == 500
     assert secret not in response.text
     assert secret not in caplog.text
-    diagnostics = [json.loads(r.message) for r in caplog.records if '"event": "unhandled_error"' in r.message]
+    diagnostics = [
+        json.loads(r.message)
+        for r in caplog.records
+        if '"event": "unhandled_error"' in r.message
+    ]
     assert len(diagnostics) == 1
     assert diagnostics[0]["request_id"] == response.headers["x-request-id"]
     assert diagnostics[0]["error_type"] == "ValueError"
-    assert any(frame["function"] == "isolated_failure" for frame in diagnostics[0]["frames"])
+    assert any(
+        frame["function"] == "isolated_failure" for frame in diagnostics[0]["frames"]
+    )
 
 
 def test_mysql_read_timeout_bounds_a_stalled_handshake(monkeypatch):
@@ -102,7 +126,9 @@ def test_mysql_read_timeout_bounds_a_stalled_handshake(monkeypatch):
 
     worker = threading.Thread(target=silent_server, daemon=True)
     worker.start()
-    engine = database.engine_for(f"mysql+pymysql://unused@127.0.0.1:{port}/isolated_timeout")
+    engine = database.engine_for(
+        f"mysql+pymysql://unused@127.0.0.1:{port}/isolated_timeout"
+    )
     started = time.monotonic()
     try:
         with pytest.raises(OperationalError):

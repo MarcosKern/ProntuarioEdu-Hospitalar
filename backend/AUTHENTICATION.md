@@ -80,7 +80,11 @@ Cinco falhas de login bloqueiam a conta por 15 minutos. O limitador HTTP continu
 
 ```python
 @router.get("/api/v1/minha-operacao")
-def operation(user: Annotated[AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])]):
+def operation(
+    user: Annotated[
+        AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])
+    ],
+):
     return {"subject": user.subject}
 ```
 

@@ -13,15 +13,22 @@ class Base(DeclarativeBase):
 @lru_cache(maxsize=4)
 def engine_for(url):
     settings = get_settings()
-    options = {"connect_timeout": settings.mysql_connect_timeout,
-               "read_timeout": settings.mysql_read_timeout,
-               "write_timeout": settings.mysql_write_timeout,
-               "init_command": "SET time_zone = '+00:00'"}
+    options = {
+        "connect_timeout": settings.mysql_connect_timeout,
+        "read_timeout": settings.mysql_read_timeout,
+        "write_timeout": settings.mysql_write_timeout,
+        "init_command": "SET time_zone = '+00:00'",
+    }
     ca = settings.mysql_ssl_ca
     if ca:
         options["ssl"] = {"ca": ca, "check_hostname": True}
-    return create_engine(url, pool_pre_ping=True, pool_timeout=settings.mysql_pool_timeout, hide_parameters=True, connect_args=options)
-
+    return create_engine(
+        url,
+        pool_pre_ping=True,
+        pool_timeout=settings.mysql_pool_timeout,
+        hide_parameters=True,
+        connect_args=options,
+    )
 
 
 def engine():
@@ -29,6 +36,8 @@ def engine():
 
 
 def session():
+    # Use `with session() as db, db.begin():` para commit/rollback da unidade inteira.
+    # `with session() as db:` sozinho fecha a sessão, mas exige commit explícito.
     return sessionmaker(bind=engine(), expire_on_commit=False)()
 
 
