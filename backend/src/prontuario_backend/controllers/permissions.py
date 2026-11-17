@@ -12,13 +12,22 @@ def require_record_access(subject, record_id, action, request_id):
         raise HTTPException(403, "Acesso negado")
     try:
         with session() as db:
-            permission = db.scalar(select(RecordPermission.id).where(
-                RecordPermission.subject == subject,
-                RecordPermission.record_id == str(record_id),
-                RecordPermission.action == action,
-            ))
-            db.add(AuditEvent(subject=subject, record_id=str(record_id), action=action,
-                              outcome="allowed" if permission else "denied", request_id=request_id))
+            permission = db.scalar(
+                select(RecordPermission.id).where(
+                    RecordPermission.subject == subject,
+                    RecordPermission.record_id == str(record_id),
+                    RecordPermission.action == action,
+                )
+            )
+            db.add(
+                AuditEvent(
+                    subject=subject,
+                    record_id=str(record_id),
+                    action=action,
+                    outcome="allowed" if permission else "denied",
+                    request_id=request_id,
+                )
+            )
             db.commit()
     except SQLAlchemyError:
         raise HTTPException(503, "Controle de acesso indisponível") from None

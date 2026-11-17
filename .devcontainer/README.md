@@ -6,16 +6,16 @@ O arquivo [devcontainer.json](devcontainer.json) define o ambiente do editor, se
 
 O `devcontainer.json` é um arquivo de configuração lido pelo GitHub Codespaces. Você não precisa executá-lo com Python, instalar as extensões uma por uma ou montar um contêiner manualmente. O GitHub lê esse arquivo quando cria ou reconstrói o Codespace e executa as etapas descritas abaixo.
 
-Este procedimento prepara apenas o ambiente de desenvolvimento. Não é necessário configurar uma conexão MySQL para concluí-lo. O banco e a arquitetura enviados pelo responsável continuam adiados; nenhum anexo é importado por essa configuração.
+Este procedimento prepara apenas o ambiente de desenvolvimento. Não é necessário configurar uma conexão MySQL para concluí-lo. A inicialização do SQL de domínio é uma ação separada no modo MySQL opcional; a preparação do editor não importa anexos ou aplica migrations.
 
 ### 1. Confirmar que a configuração está na branch do GitHub
 
 Abra o repositório no GitHub e use o seletor de branches, acima da lista de arquivos, para escolher a branch de trabalho. Confirme que ela contém `.devcontainer/devcontainer.json`, `.devcontainer/Dockerfile` e `.devcontainer/setup.py`.
 
-Se os arquivos estiverem apenas no computador ou em outro ambiente, primeiro é necessário enviar a branch ao GitHub. Por exemplo, para a branch criada para esta configuração, execute no terminal do repositório:
+Se os arquivos estiverem apenas no computador ou em outro ambiente, primeiro é necessário enviar a branch ao GitHub. Para enviar a branch atual, após autorização para o push, execute no terminal do repositório:
 
 ```bash
-git push -u origin chore/codespaces-mysql-dev-environment
+git push -u origin HEAD
 ```
 
 Esse comando é uma etapa manual de publicação da branch; não faz parte da execução automática do Codespace. Se a configuração estiver em outra branch, use o nome correspondente.
@@ -126,17 +126,17 @@ A configuração declara as extensões; o GitHub/VS Code baixa-as no Codespace. 
 
 A feature Docker necessita permissões do ambiente de contêineres e pode ser bloqueada por política da organização. Não iniciar outro daemon manualmente para contornar uma falha. O primeiro build pode demorar; os locks Python são fixados, enquanto tags de imagem/feature recebem manutenção do provedor.
 
-## Etapa futura: configurar MySQL externo e segredos
+## Configurar MySQL externo e segredos
 
 Use **Settings → Secrets and variables → Codespaces** do GitHub, ou seus segredos pessoais de Codespaces, habilitando acesso ao repositório. Configure `DATABASE_URL` e `AUTH_JWT_SECRET`. Reinicie/recrie o Codespace para receber alterações de segredos. Não colocar valores em `devcontainer.json`, tasks, conexões versionadas ou mensagens de commit.
 
-A variável exportada pelo Codespaces tem precedência sobre `.env`. Alternativamente, preencher `backend/.env` privadamente. O formato aceito é `mysql+pymysql://...`, com credenciais percent-encoded. Certificados não são segredos em variável de texto: disponibilizar o arquivo CA confiável no Codespace e apontar `MYSQL_SSL_CA` para seu caminho.
+Na execução Python local, a variável exportada pelo Codespaces tem precedência sobre `.env`. Alternativamente, preencher `backend/.env` privadamente. O formato aceito é `mysql+pymysql://...`, com credenciais percent-encoded. Certificados não são segredos em variável de texto: disponibilizar o arquivo CA confiável no Codespace e apontar `MYSQL_SSL_CA` para seu caminho.
 
 O banco é **MySQL 8.4 externo**: este Dev Container não instala MySQL Server e não conecta o navegador diretamente ao banco. O hostname deve ser acessível a partir do Codespace e aceito pelo certificado; `localhost` não aponta para seu computador ou servidor externo. O operador pode precisar autorizar a rede do Codespaces ou disponibilizar conectividade privada. A senha é fornecida de forma segura, nunca por URL no histórico do terminal.
 
 O cliente MySQL do VS Code deve usar o mesmo servidor/banco e verificar TLS, com usuário de privilégios mínimos. Não versionar configurações de conexão contendo credenciais. A extensão não aplica as regras de autorização da API: acesso SQL deve ser limitado a quem tem essa competência.
 
-## Etapa futura: iniciar a API e usar o Postman
+## Iniciar a API e usar o Postman
 
 Pela paleta **Tasks: Run Task**, escolha **Codespaces: iniciar API**. Alternativamente, da raiz:
 
@@ -169,7 +169,9 @@ docker compose config --quiet
 docker compose up --build -d --wait
 ```
 
-Não executar junto à API local na mesma porta. O Compose base inicia API e Redis, não MySQL. Para esse caminho com URL encaminhada, incluir o hostname exato do Codespace em `ALLOWED_HOSTS` (JSON) no `.env`/segredo antes de recriar o serviço: o wrapper de inicialização local não modifica o ambiente de um contêiner Compose independente. Certificados MySQL precisam da montagem do [override TLS](../backend/compose.tls.yaml) e caminhos do arquivo visíveis ao daemon Docker interno.
+Não executar junto à API local na mesma porta. O Compose base inicia API e Redis, não MySQL. Para esse caminho com URL encaminhada, incluir o hostname exato do Codespace em `ALLOWED_HOSTS` (JSON) no `.env` antes de recriar o serviço: o wrapper de inicialização local não modifica o ambiente de um contêiner Compose independente. No Compose base, `DATABASE_URL` é interpolada do terminal/arquivo, enquanto os demais campos da aplicação, incluindo `AUTH_JWT_SECRET` e `ALLOWED_HOSTS`, são lidos do `.env` carregado por `env_file`; segredos exportados ao terminal não são todos encaminhados automaticamente.
+
+Certificados MySQL precisam da montagem do [override TLS](../backend/compose.tls.yaml) e caminhos do arquivo visíveis ao daemon Docker interno.
 
 Para iniciar também um MySQL de desenvolvimento com o SQL recebido, siga o [modo opcional MySQL em contêiner](../backend/docker/mysql/README.md). Ele é iniciado por uma ação explícita do desenvolvedor e não pelo `postCreateCommand` do Codespace. Mantenha `ALLOWED_HOSTS` da API no `.env` e a porta SQL restrita ao ambiente remoto.
 

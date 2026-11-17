@@ -39,6 +39,9 @@ services:
       APP_ENV: test
       DATABASE_URL: mysql+pymysql://prontuario_test:test-only-password@mysql:3306/prontuarioedu?charset=utf8mb4
       REDIS_URL: redis://redis:6379/0
+      # Opcional e privada, fornecida explicitamente pelo processo que inicia o Compose.
+      # Sem chave, saúde/docs funcionam, mas o login permanece bloqueado com 503.
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
       ALLOWED_HOSTS: ${TEST_ALLOWED_HOSTS:-["localhost","127.0.0.1"]}
     depends_on:
       mysql:

@@ -18,7 +18,7 @@ click==8.5.0
     # via uvicorn
 cryptography==50.0.2
     # via -r requirements.in
-fastapi==0.162.0
+fastapi==0.162.2
     # via -r requirements.in
 h11==0.16.0
     # via uvicorn
@@ -45,7 +45,7 @@ pydantic-settings==2.16.2
     # via -r requirements.in
 pyjwt==2.15.1
     # via -r requirements.in
-pymysql==1.2.3
+pymysql==1.2.4
     # via -r requirements.in
 python-dotenv==1.2.4
     # via

@@ -1,4 +1,5 @@
 """Prepare private credentials for the opt-in MySQL development container."""
+
 import argparse
 import os
 import secrets
@@ -11,18 +12,34 @@ from dotenv import dotenv_values, set_key
 def prepare(backend: Path):
     base = backend / ".env"
     if not base.exists():
-        with open(base, "x", opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
+        with open(
+            base, "x", opener=lambda path, flags: os.open(path, flags, 0o600)
+        ) as output:
             output.write((backend / ".env.example").read_text())
     target = backend / ".env.mysql"
     if target.exists():
         config = dotenv_values(target)
-        if not all(config.get(key) for key in ("MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_ROOT_PASSWORD", "DATABASE_URL")):
-            raise ValueError(".env.mysql incompleto; revise o arquivo sem trocar senhas de um volume existente")
+        if not all(
+            config.get(key)
+            for key in (
+                "MYSQL_USER",
+                "MYSQL_PASSWORD",
+                "MYSQL_ROOT_PASSWORD",
+                "DATABASE_URL",
+            )
+        ):
+            raise ValueError(
+                ".env.mysql incompleto; revise o arquivo sem trocar senhas de um volume existente"
+            )
         print(".env.mysql já existe; configuração e credenciais preservadas.")
         return
     password = secrets.token_urlsafe(32)
-    with open(target, "x", opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
-        output.write("# Credenciais privadas do MySQL de desenvolvimento; não versionar.\n")
+    with open(
+        target, "x", opener=lambda path, flags: os.open(path, flags, 0o600)
+    ) as output:
+        output.write(
+            "# Credenciais privadas do MySQL de desenvolvimento; não versionar.\n"
+        )
     values = {
         "MYSQL_USER": "prontuario_backend",
         "MYSQL_PASSWORD": password,

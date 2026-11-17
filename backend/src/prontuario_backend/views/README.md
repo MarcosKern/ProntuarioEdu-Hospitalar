@@ -15,3 +15,9 @@ Cobrir a responsabilidade com testes: regras isoladas em `backend/tests/unit/`, 
 O ambiente inicial usa FastAPI e SQLAlchemy/MySQL externo. Os arquivos Python desta pasta participam da API de desenvolvimento; funcionalidades clínicas ainda não foram implementadas.
 
 `auth.py` define identidade, validade da sessão, entradas de refresh/troca de senha e resposta de tokens. Somente login e renovação retornam access/refresh tokens; os demais contratos não expõem credenciais ou hashes.
+
+`LoginRequest` também valida o formulário de login antes da operação. Os DTOs de entrada recusam propriedades desconhecidas e limitam os tamanhos; respostas de identidade usam UUID, e a saúde bem-sucedida usa apenas o estado `ok`.
+
+`pagination.py` define `PaginationParams` (limit 20 por padrão, máximo 100, offset até 100.000) e `PageResponse[ItemResponse]`, com itens filtrados pela View pública do recurso. Paginação e contagem devem ser aplicadas pelo Model após os mesmos filtros e permissões; a View não consulta SQL. `errors.py::error_body` produz o envelope de erro comum, com request ID e mensagem pública opcional.
+
+Veja os [contratos HTTP e exemplos de uso](../../../CONTRATOS.md).

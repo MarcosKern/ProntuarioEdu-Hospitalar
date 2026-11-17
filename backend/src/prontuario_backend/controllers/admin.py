@@ -10,7 +10,10 @@ from prontuario_backend.views.auth import AdministratorResponse
 
 
 def require_system_admin(
-    user: Annotated[AuthenticatedUser, Security(authenticate_request, scopes=["identity:read", "admin:access"])],
+    user: Annotated[
+        AuthenticatedUser,
+        Security(authenticate_request, scopes=["identity:read", "admin:access"]),
+    ],
 ) -> AdministratorResponse:
     """Confere o usuário e a concessão ativa no banco da aplicação antes da operação."""
     try:
@@ -20,4 +23,9 @@ def require_system_admin(
         raise HTTPException(503, "Cadastro de usuários indisponível") from None
     if not account:
         raise HTTPException(403, "Usuário sem permissão administrativa ativa")
-    return AdministratorResponse(subject=user.subject, user_id=account["id"], login=account["login"], name=account["nome"])
+    return AdministratorResponse(
+        subject=user.subject,
+        user_id=account["id"],
+        login=account["login"],
+        name=account["nome"],
+    )
