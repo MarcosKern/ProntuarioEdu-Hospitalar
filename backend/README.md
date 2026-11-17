@@ -8,6 +8,10 @@ Para desenvolvimento com o SQL recebido já inicializado em um serviço MySQL pr
 
 Para **testes com conexão fixa**, execute de `backend` `python3 scripts/test_env.py`. O script sobe [`compose.test.yaml`](compose.test.yaml), aguarda os serviços e exibe as variáveis de conexão no terminal. Veja o [guia do Compose de testes](docker/mysql/TESTING.md).
 
+Para criar automaticamente **usuário comum e administrador de testes**, siga o
+[manual breve de login no Docker](LOGIN_TEST.md). Esse modo opcional usa um banco
+separado, senhas com hash scrypt e credenciais públicas exclusivas de testes.
+
 ## Documentos do banco de domínio
 
 Os documentos recebidos foram [revisados para MySQL 8.4 e organizados em `docs/database`](docs/database/README.md). A pasta contém SQL de referência, modelo com dicionário das 64 tabelas, regras de negócio propostas e grafo dos 121 relacionamentos FK.
