@@ -11,6 +11,181 @@ No computador, instale [Git](https://git-scm.com/downloads), Python **3.12** e [
 No GitHub Codespaces, primeiro conclua a [preparação do editor](../.devcontainer/README.md). Ela já instala as ferramentas e prepara o venv; não inicia os serviços.
 
 Clone o repositório se ainda não tem um checkout, selecione a branch com a implementação desejada e entre em `backend`:
+Para criar automaticamente **usuário comum e administrador de testes**, siga o
+[manual breve de login no Docker](LOGIN_TEST.md). Esse modo opcional usa um banco
+separado, senhas com hash scrypt e credenciais públicas exclusivas de testes.
+
+## Documentos do banco de domínio
+
+Os documentos recebidos foram [revisados para MySQL 8.4 e organizados em `docs/database`](docs/database/README.md). A pasta contém SQL de referência, modelo com dicionário das 64 tabelas, regras de negócio propostas e grafo dos 121 relacionamentos FK.
+
+Essa documentação é separada das migrações técnicas já utilizadas pelo backend. Sua inclusão não importa o schema nem implementa os módulos de domínio. Consulte os limites e o plano de integração no guia antes de iniciar essa etapa.
+
+
+O Back-end usará MVC para facilitar a leitura e a divisão do trabalho de uma turma intermediária. Continua sendo um único servidor para Desktop, Web e futuras integrações. MVC organiza o código; não exige dividir o servidor em serviços.
+
+## Quem faz o quê
+
+| Pasta em `src/prontuario_backend/` | Competência | Exemplo |
+| --- | --- | --- |
+| `models/` | Dados, regras de negócio e persistência | Validar e salvar uma anotação |
+| `controllers/` | Receber a operação, verificar acesso e coordenar | Solicitar ao Model a criação após autorizar o usuário |
+| `views/` | Formatar respostas JSON e erros | Retornar apenas identificador e texto permitidos |
+| `routes/` | Conectar URL/método ao Controller | Registrar `POST /api/v1/anotacoes` |
+| `config/` | Inicialização, banco, autenticação e Swagger | Ler a URL do banco do ambiente |
+
+Views do servidor são representações JSON. As telas ficam em Desktop e Web. Models não importam Controllers ou Views. Views recebem dados do Controller, sem consultar o banco. Controllers não devem virar um arquivo enorme com SQL e todas as regras.
+
+## Fluxo de uma operação
+
+```mermaid
+flowchart LR
+    Cliente[Desktop ou Web] --> Rota[Rota HTTP]
+    Rota --> Controller[Controller: verificar acesso e coordenar]
+    Controller --> Model[Model: regras e dados]
+    Model --> Banco[(MySQL externo)]
+    Model --> Controller
+    Controller --> View[View: resposta JSON]
+    View --> Cliente
+```
+
+## Exemplo prático: registrar uma anotação de demonstração
+
+Exemplo fictício para ensinar a divisão; não é uma regra clínica aprovada nem uma API já disponível. Imagine que um usuário autorizado envia um texto para um registro e que texto vazio seja inválido.
+
+1. A rota recebe `POST /api/v1/anotacoes` e encaminha ao Controller.
+2. A autenticação identifica o usuário; o Controller valida formato, registro solicitado e permissão de escrita.
+3. O Model verifica a regra do texto e grava na transação configurada.
+4. O Controller entrega o resultado à View.
+5. A View seleciona os campos públicos e retorna a resposta de sucesso documentada.
+
+### Pseudocódigo por pasta
+
+As funções abaixo são ilustrativas: tipos, dependências e tratamento completo de erros não foram implementados. Não são arquivos executáveis.
+
+```python
+# models/anotacao.py
+class Anotacao:
+    @classmethod
+    def criar(cls, registro_id, autor_id, texto):
+        if not texto.strip():
+            raise TextoInvalido("O texto não pode ficar vazio")
+        # Pseudocódigo: a persistência real usa SQLAlchemy/MySQL.
+        return salvar_anotacao_em_transacao(
+            registro_id=registro_id,
+            autor_id=autor_id,
+            texto=texto.strip(),
+        )
+
+
+# controllers/anotacoes.py
+def criar_anotacao(requisicao):
+    usuario = exigir_usuario_autenticado(requisicao)
+    entrada = validar_entrada(requisicao.json)
+    exigir_permissao_de_escrita(usuario, entrada.registro_id)
+    anotacao = Anotacao.criar(
+        registro_id=entrada.registro_id,
+        autor_id=usuario.id,
+        texto=entrada.texto,
+    )
+    return resposta_criada(anotacao)
+
+
+# views/anotacoes.py
+def resposta_criada(anotacao):
+    return {"id": anotacao.id, "texto": anotacao.texto}, 201
+```
+
+`validar_entrada`, autenticação, autorização, persistência e as exceções são nomes conceituais. A implementação precisa limitar tamanho do texto, validar identificadores, tratar registro inexistente e garantir consistência entre autorização e gravação. A transação deve confirmar antes de responder sucesso e desfazer alterações em falhas. Erros conhecidos devem virar respostas documentadas, sem expor SQL ou rastros internos.
+
+O autor vem da sessão validada, nunca de um campo confiado ao cliente. Os exemplos e os testes usam dados sintéticos. Auditoria, controle por registro, proteção de dados e política de concorrência devem ser definidos antes do uso real.
+
+## Divisão de trabalho na turma
+
+- Quem implementa Models cuida das regras, consultas e persistência com seus testes.
+- Quem implementa Controllers cuida dos fluxos, entradas e acesso, combinando os métodos dos Models com a equipe.
+- Quem implementa Views e rotas cuida do contrato JSON, erros e documentação OpenAPI.
+- A equipe combina os formatos antes de trabalhar em paralelo e testa a operação completa no final.
+
+Uma pessoa pode atuar em mais de uma frente. A separação orienta onde escrever; não exige uma pessoa para cada pasta. Evitar abstrações extras até surgir uma necessidade concreta.
+
+## Swagger e testes
+
+Rotas e esquemas de entrada/saída alimentam o OpenAPI, apresentado pelo Swagger UI. Views não devem serializar campos privados por padrão. Veja o [README principal](../README.md#swagger-no-back-end).
+
+### Pré-configuração implementada
+
+O arquivo [`config/swagger.py`](src/prontuario_backend/config/swagger.py) centraliza título, versão, descrição, grupos de rotas e comportamento do Swagger. As rotas existentes já têm resumo, descrição, identificador da operação e schemas de respostas, inclusive erros. Não é necessário instalar um pacote Swagger separado: o FastAPI já gera o contrato.
+
+| Endereço | Finalidade |
+| --- | --- |
+| `/docs` | Interface Swagger, disponível em desenvolvimento e testes |
+| `/openapi.json` | Contrato para clientes, Postman e validação automatizada |
+| `/api/v1/auth/token` | Emissão do JWT após login na própria API |
+
+O Swagger usa a mesma origem do navegador para chamar a API. Assim, no Codespace, as requisições continuam no endereço HTTPS encaminhado pelo GitHub. Autorizações não são persistidas pelo Swagger no armazenamento do navegador. Em produção, a interface e o contrato ficam desabilitados.
+
+O botão **Authorize** solicita o token em `POST /api/v1/auth/token` na própria API, usando usuário e senha. O Swagger envia o access token como Bearer nas operações protegidas. Veja o [passo a passo](AUTHENTICATION.md#solicitar-o-token-pelo-swagger).
+
+### Usar o Swagger em desenvolvimento
+
+1. Configure `.env`, `DATABASE_URL` e `AUTH_JWT_SECRET` conforme [autenticação](AUTHENTICATION.md#configuração).
+2. Inicie a API e o MySQL autorizado; crie o [administrador](ADMINISTRADOR.md) explicitamente.
+3. Abra a porta da API com `/docs`. Localmente: `http://127.0.0.1:8000/docs`. No Codespace, mantenha o hostname exato em `ALLOWED_HOSTS` e a porta privada.
+4. Use **Authorize** com usuário/senha e `identity:read`. Para o administrador, marque também `admin:access`.
+5. Execute `GET /api/v1/me`, `GET /api/v1/auth/session` ou `GET /api/v1/admin/me`. A autorização não fica persistida ao recarregar a página.
+6. Para encerrar a sessão no servidor, execute `POST /api/v1/auth/logout` antes de limpar a autorização na interface; a resposta é 204 sem corpo. O botão Logout do modal do Swagger apenas limpa o token da página.
+
+Não há client ID, client secret, callback ou realm. Sem token, as rotas protegidas respondem 401. `/health` continua público. Renovação e logout são rotas da própria API descritas no [guia de autenticação](AUTHENTICATION.md).
+
+### Exemplo: configurar a documentação de um endpoint
+
+O exemplo abaixo é um recorte da rota **já implementada** em [`routes/api.py`](src/prontuario_backend/routes/api.py). Ele mostra como documentar `GET /api/v1/me`; não precisa ser copiado para criar uma segunda rota.
+
+```python
+from typing import Annotated
+
+from fastapi import Security
+
+from prontuario_backend.config.auth import AuthenticatedUser, authenticate_request
+from prontuario_backend.views.auth import IdentityResponse
+
+
+@router.get(
+    "/api/v1/me",
+    response_model=IdentityResponse,
+    tags=["Autenticação"],
+    summary="Consultar a identidade autenticada",
+    operation_id="get_current_identity",
+    description="Valida o JWT e a sessão no MySQL. Exige Bearer e o escopo identity:read.",
+    responses={
+        status: ERROR_RESPONSES[status]
+        for status in (401, 403, 405, 413, 429, 500, 503)
+    },
+)
+def identity(
+    user: Annotated[
+        AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])
+    ],
+):
+    return IdentityResponse(subject=user.subject)
+```
+
+Nesse arquivo, `router` é uma instância de `APIRouter` e `ERROR_RESPONSES` vem de `views/errors.py`. A dependência `authenticate_request` executa antes do corpo do endpoint e entrega somente uma identidade já validada.
+
+| Configuração | Efeito no Swagger e na API |
+| --- | --- |
+| Caminho e método do decorator | Registram a operação que aparecerá na documentação |
+| `response_model` | Define o contrato da resposta de sucesso e filtra os campos retornados |
+| `tags` | Agrupa a operação; os grupos atuais são descritos em `config/swagger.py` |
+| `summary` e `description` | Explicam o objetivo e os requisitos da chamada |
+| `operation_id` | Identifica a operação no OpenAPI; deve ser único e estável para os clientes |
+| `responses` | Documenta os erros com o schema compartilhado; não implementa seu tratamento |
+| `Security(authenticate_request, scopes=["identity:read"])` | Valida o token antes do endpoint, exige o escopo e o documenta no OpenAPI |
+
+Ao alterar um endpoint real, mantenha a implementação e esses metadados coerentes. Para entrada de dados futura, declare um Model Pydantic adequado ao contrato aprovado: o FastAPI incluirá seus campos no OpenAPI. Documentar um erro ou uma regra não substitui implementá-los e testá-los.
+
+Para conferir esta pré-configuração sem banco, de `backend` e sem `MYSQL_TEST_URL` no ambiente:
 
 ```bash
 git clone https://github.com/MarcosKern/ProntuarioEdu-Hospitalar.git

@@ -1,4 +1,7 @@
 # Byte-compiled / optimized / DLL files
+# Configuração local do OpenCode
+/.opencode/
+
 __pycache__/
 *.py[codz]
 *$py.class
