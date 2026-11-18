@@ -1,6 +1,6 @@
 # Documentação do banco MySQL
 
-Esta pasta incorpora as fontes Markdown e SQL recebidas do responsável, revisadas para **MySQL 8.4 externo com InnoDB**. Os arquivos são referências para revisão e desenvolvimento futuro. Sua inclusão não aplica o schema, não cria endpoints e não modifica a arquitetura MVC ou a autenticação local JWT atual.
+Esta pasta incorpora as fontes Markdown e SQL recebidas do responsável, revisadas para **MySQL 8.4 com InnoDB**. Os arquivos são referências para revisão e desenvolvimento futuro. Sua inclusão não aplica o schema, não cria endpoints e não modifica a arquitetura MVC ou a autenticação local JWT atual.
 
 ## Por onde começar
 
@@ -44,7 +44,7 @@ O projeto das tabelas recebido foi preservado. O perfil administrativo inicial e
 
 As migrações em [`../../migrations`](../../migrations) mantêm as tabelas técnicas `record_permissions` e `audit_events`, além do controle `alembic_version`. Elas **não criam as 64 tabelas deste documento**. As tabelas técnicas e o domínio recebido têm finalidades e nomes diferentes; não devem ser renomeados ou unidos automaticamente.
 
-A aplicação já utiliza senha local com hash e sessões para autenticação JWT. Recuperação de acesso e MFA continuam pendentes, apesar de suas tabelas existirem. O [administrador inicial](../../ADMINISTRADOR.md) é criado explicitamente em `cadastro__usuarios`, com perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`; contas externas só são convertidas por comando explícito.
+A aplicação já utiliza senha local com hash e sessões para autenticação JWT. Recuperação de acesso e MFA continuam pendentes, apesar de suas tabelas existirem. O [administrador inicial](../../README.md#4-criar-o-administrador-da-aplicação) é criado explicitamente em `cadastro__usuarios`, com perfil `ADMINISTRADOR` e `USUARIO_GERENCIAR`; contas externas só são convertidas por comando explícito.
 
 Não há INSERTs, usuários padrão ou pacientes de demonstração no SQL. A coluna `ficticio` faz parte da modelagem educacional recebida; sua presença e seu default não inserem pacientes. Os cenários ilustrativos da documentação não são scripts de carga.
 
@@ -52,7 +52,7 @@ O cadastro do administrador é posterior à criação do schema: execute `script
 
 ## Aplicação do schema
 
-O responsável autorizou a inicialização deste SQL no [modo opcional MySQL em contêiner de desenvolvimento](../../docker/mysql/README.md). Esse caminho embarca o arquivo na imagem e executa a criação do banco e das tabelas no primeiro uso de um volume vazio. A criação das tabelas não implementa automaticamente os fluxos de negócio. O vínculo administrativo inicial já está integrado separadamente; para o servidor externo e os demais módulos de domínio, as etapas abaixo continuam necessárias.
+O responsável autorizou a inicialização deste SQL no [modo opcional MySQL em contêiner de desenvolvimento](../../README.md#3-construir-e-iniciar-os-serviços). Esse caminho embarca o arquivo na imagem e executa a criação do banco e das tabelas no primeiro uso de um volume vazio. A criação das tabelas não implementa automaticamente os fluxos de negócio. O vínculo administrativo inicial já está integrado separadamente; para o servidor externo e os demais módulos de domínio, as etapas abaixo continuam necessárias.
 
 O arquivo SQL contém `CREATE DATABASE IF NOT EXISTS prontuarioedu` e `USE prontuarioedu`. **Selecionar outro banco na linha de comando não muda esse destino.** Não importe o arquivo no servidor real como parte da configuração do editor ou da API.
 
@@ -62,12 +62,12 @@ Antes de expandir a integração de domínio ou aplicar o schema fora do modo de
 
 1. Validar o modelo com o responsável, incluindo autenticação, autorização, regras educacionais e nomes físicos.
 2. Definir migrações Alembic por etapa, compatibilidade com as tabelas técnicas atuais e estratégia de implantação/recuperação.
-3. Separar contas de migração e runtime, com privilégios mínimos, acesso de rede e TLS configurados conforme o [guia MySQL](../../MYSQL.md).
+3. Separar contas de migração e runtime, com privilégios mínimos, acesso de rede e TLS configurados conforme o [guia MySQL](../MYSQL.md).
 4. Implementar invariantes que dependem de outras linhas em transações adequadas: cadeia prescrição/checagem/administração, participação em grupos, ocupações históricas e concorrência de estoque.
 5. Definir auditoria e retificação das tabelas de domínio. O DDL recebido não cria triggers append-only para essas tabelas; os triggers existentes da aplicação protegem apenas a auditoria técnica.
 6. Executar testes de integridade, autorização, concorrência e restauração em um MySQL descartável separado, sem apontar a suíte ao banco de aplicação.
 
-O Compose base, as migrações técnicas existentes e os hooks de Codespaces não importam o SQL. A importação automática ocorre somente ao iniciar explicitamente o modo MySQL de desenvolvimento com um volume vazio.
+O Compose base, as migrações técnicas existentes e os hooks de Codespaces não importam o SQL. A importação automática ocorre somente nos modos MySQL de desenvolvimento ou testes explicitamente iniciados, em volume vazio.
 
 ## Validação desta revisão
 

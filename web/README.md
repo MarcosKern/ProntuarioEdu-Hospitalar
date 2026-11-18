@@ -19,3 +19,6 @@ Não há framework, gerenciador de pacotes, manifesto ou build definido. A decis
 Essas são competências, não nomes de diretórios impostos. Depois de escolher o framework, documente como suas convenções representam cada responsabilidade; mantenha `src/` reservado até lá.
 
 Para desenvolver um fluxo: revisar contrato e estados de erro, implementar comunicação, montar a experiência visual e verificar o comportamento em computador e celular. Testar teclado, toque, foco, leitores de tela e estados de rede. Esconder um botão não protege uma operação: o servidor deve negar acessos indevidos. Cache de dados sensíveis, PWA e offline exigem decisões explícitas.
+
+
+Os testes futuros devem cobrir componentes/fluxos isolados, integração HTTP e acessibilidade. Inclua estados de carregamento, sessão expirada, permissão negada e falha de rede. Não há comando de build ou de testes até a escolha da tecnologia. O [contrato público](../contracts/README.md) é compartilhado com o Desktop.

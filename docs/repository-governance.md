@@ -1,61 +1,35 @@
-# Governança solicitada
+# Governança do repositório
 
-## Estado atual
+As regras do trabalho estão em [AGENTS.md](../AGENTS.md). Esta página explica a política solicitada; o estado efetivo das proteções deve ser conferido em **GitHub → Settings → Rules → Rulesets** e nos checks do PR. Documentação não ativa uma proteção por si só.
 
-O ruleset Branch (26643855) está ativo. A leitura confirmou quatro aprovações, invalidação após push, aprovação do último push, resolução de conversas e checks test/image do GitHub Actions. Seu escopo atual é **todas as branches**, inclusive branches de trabalho.
+## Branches e publicação
 
-A configuração remota também exige CodeQL/code_quality e contém novamente Copilot. A tentativa desta tarefa de remover somente Copilot recebeu HTTP 403 (`Resource not accessible by integration`). Nenhuma regra remota foi alterada. A revisão apenas pelo Codex continua sendo o requisito; a ativação própria do Codex e a configuração nativa de qualidade precisam ser conferidas pelo administrador.
+- Criar uma branch de trabalho é permitido.
+- Commits, pushes, rebase/reescrita, alteração ou exclusão de branches existentes exigem autorização do responsável para a operação. Uma autorização já dada continua válida no seu escopo.
+- Não use force push nem bypass de revisão como forma de resolver rejeição de atualização. Confira as alterações remotas e preserve o trabalho existente.
+- Mantenha segredos, bancos, backups e arquivos de configuração privados fora do Git.
 
-O workflow CodeQL Python foi preparado no repositório para produzir a análise, sem remover o gate exigido. Default setup CodeQL não pôde ser consultado por falta de permissão. Se já estiver ativo, evitar duplicação com o workflow avançado. Preparar arquivo não comprova que o serviço executou ou que o merge está liberado.
+## Condições para merge
 
-## Proteção para merge
+| Controle | Política |
+| --- | --- |
+| Entrega | Alterações por pull request |
+| Aprovações humanas | Pelo menos quatro aprovações válidas |
+| Revisão automática | Codex concluído; não substitui as aprovações humanas |
+| CI | Testes, lint, auditoria de dependências, build/scan da imagem e CodeQL aplicáveis aprovados |
+| Bloqueios | Discussões e achados de segurança resolvidos |
+| Arquitetura | Decisão aplicável e sua validação aprovadas |
 
-Configurar um ruleset ativo para `main` e futuras branches de release, sem bypass rotineiro:
+O projeto solicita revisão do Codex; Copilot não faz parte da política de revisão automática escolhida. Verifique as integrações e os nomes dos checks disponíveis no próprio GitHub antes de alterar um ruleset. Não remova checks para obter um PR verde.
 
-1. Exigir pull request e no mínimo quatro aprovações humanas válidas.
-2. Invalidar aprovações após novos commits e exigir aprovação do último push por outra pessoa.
-3. Exigir resolução das conversas e checks obrigatórios aprovados.
-4. Bloquear exclusão e force push.
-5. Exigir os checks reais de arquitetura e revisão automática descritos abaixo, depois de implementar e validar suas integrações. Não cadastrar nomes de checks inexistentes como se já estivessem funcionando.
+O escopo de regras de merge e o de proteção contra exclusão/reescrita podem ser diferentes. Confira as branches abrangidas e o efeito das permissões de bypass com o administrador; não configure exceção permanente que dispense as aprovações exigidas.
 
-O repositório precisa de revisores elegíveis suficientes para alcançar quatro aprovações. A disponibilidade dos rulesets e de suas opções depende do plano e da visibilidade do repositório.
+## Alterações arquiteturais
 
-## Revisão automática pelo Codex
+MVC, FastAPI/MySQL e login local JWT têm decisões registradas nas [ADRs](adr/README.md). Mudanças de arquitetura e novas dependências de aplicação precisam registrar alternativas, justificativa, impacto e testes, além da aprovação explícita aplicável. A mera presença de um arquivo ADR não comprova uma aprovação.
 
-- Habilitar a integração de code review do Codex para este repositório e a revisão automática dos PRs nas configurações correspondentes.
-- A revisão automática não substitui as quatro aprovações humanas exigidas.
-- Implementar um check obrigatório que confirme que o Codex revisou o SHA atual do PR e que achados bloqueantes foram resolvidos. Definir os eventos, identidades e critérios reais após habilitar as integrações.
-- O agregador deve falhar ou permanecer pendente quando uma revisão estiver ausente, desatualizada ou indisponível. Uma simples menção aos bots ou a existência de comentários não equivale a aprovação.
-- Vincular checks obrigatórios à aplicação emissora esperada quando o GitHub permitir; não confiar apenas no nome do check.
+Um gate automático de arquitetura exige responsáveis e evidência verificável de aprovação definidos pelo projeto. Não trate esse gate como implementado apenas por existir um README ou CODEOWNERS.
 
-A revisão automática deve usar apenas o Codex. Sua ativação ainda não foi confirmada; a criação de rulesets continua negada pela integração. Nenhuma integração nem check foi instalado neste onboarding.
+## Manter as regras no GitHub
 
-## Autorização de branches
-
-Criar branches é permitido. Excluir ou alterar branches existentes requer autorização explícita. O GitHub não fornece um pedido de autorização interativo para cada operação Git.
-
-Para impor essa política no servidor, usar um ruleset aplicável às branches existentes, restringindo atualizações e exclusões a uma aplicação/fluxo de autorização controlado. A criação de branches deve permanecer liberada. Um bypass permanente para usuários permite operações sem autorização por operação e não satisfaz sozinho este requisito. O mecanismo deve permitir também os merges aprovados e evitar bloquear o fluxo de quatro revisões.
-
-Até existir esse fluxo, `AGENTS.md` exige autorização dos agentes, mas não impede operações de usuários ou clientes Git externos. A política rigorosa também impede pushes de atualização de PRs sem autorização; qualquer exceção para branches de trabalho precisa ser decidida pelo responsável.
-
-## Validação da arquitetura
-
-A escolha de MVC foi autorizada pelo responsável e registrada na ADR 0001. Antes da primeira implementação, completar e aprovar as decisões de framework, contratos, autenticação, autorização, persistência e comportamento offline. Para mudanças posteriores, exigir ADR quando houver impacto arquitetural e justificativa revisada quando não houver.
-
-Implementar um check obrigatório que valide a ADR aplicável e sua aprovação por responsáveis designados. A mera presença de um arquivo ADR não prova aprovação. O responsável, sua identidade no GitHub e a forma verificável de registrar aprovação ainda precisam ser definidos. Revisão por CODEOWNERS pode complementar o processo, mas não prova aprovação de uma pessoa específica em cada ADR sem validação adicional.
-
-## Conclusão administrativa pendente
-
-As regras de PR e os checks test/image estão ativos. Permanecem pendentes a remoção do Copilot, a verificação da revisão do Codex, a execução de CodeQL/qualidade e um gate verificável de aprovação arquitetural. A validação de autorização por operação de branch exige fluxo próprio; não é fornecida automaticamente pelo ruleset.
-
-## Configuração concreta para o administrador
-
-`github-ruleset.json` preserva todas as regras atualmente observadas e remove somente Copilot; não elimina CodeQL, code_quality ou as aprovações. Para atualizar o ruleset existente com credencial administrativa, conferir primeiro seu conteúdo atual e executar da raiz:
-
-```bash
-gh api --method PUT repos/MarcosKern/ProntuarioEdu-Hospitalar/rulesets/26643855 --input docs/github-ruleset.json
-```
-
-Não usar POST para essa atualização, pois criaria uma regra duplicada. O ruleset abrange todas as branches: validar o fluxo de atualização de PRs e decidir com o responsável se regras de merge devem ficar apenas em main/releases, mantendo exclusão/force push bloqueados para todas. Não criar bypass permanente que contorne as aprovações.
-
-O arquivo não ativa o Codex nem implementa um gate de aprovação arquitetural. Essas integrações dependem de configuração e critérios verificáveis próprios. Não remover gates de segurança apenas para obter CI verde.
+Revise o ruleset existente antes de atualizá-lo; não crie outro duplicado. Use o painel do GitHub ou uma exportação atual revisada pelo administrador, preservando proteções e integrações aplicáveis. Identificadores de ruleset e resultados de execução mudam e não devem ser copiados de registros históricos como configuração vigente.

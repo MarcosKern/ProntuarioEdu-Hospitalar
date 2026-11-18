@@ -1,6 +1,6 @@
 # ADR 0002 — Ambiente inicial do Back-end
 
-Atualização de 12/11/2026: as decisões de autenticação abaixo são históricas e foram substituídas pelo [login local da ADR 0010](0010-autenticacao-local.md). A configuração atual está em `backend/AUTHENTICATION.md`.
+Atualização de 12/11/2026: as decisões de autenticação abaixo são históricas e foram substituídas pelo [login local da ADR 0010](0010-autenticacao-local.md). A configuração atual está em [referência de autenticação](../../backend/docs/AUTENTICACAO.md).
 
 > Histórico: a escolha de banco deste documento foi substituída pela [ADR 0004 — MySQL externo](0004-mysql-externo.md).
 

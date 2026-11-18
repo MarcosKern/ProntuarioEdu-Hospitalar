@@ -17,42 +17,30 @@ sequenceDiagram
     API-->>App: Resposta autorizada
 ```
 
-## Configuração
+## Configuração e uso
 
-1. Copie `.env.example` para `.env` se o arquivo ainda não existir. Configure `DATABASE_URL` para o MySQL autorizado.
-2. Gere uma chave aleatória **localmente**:
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(48))"
-```
-
-3. Guarde a saída em `AUTH_JWT_SECRET` no `.env` ignorado ou em um gerenciador de segredos. Não publique a chave no Git, chat ou logs. Em Linux/macOS, use `chmod 600 .env`. Essa chave assina tokens; é separada da senha dos usuários e da conexão MySQL. Todas as réplicas devem usar a mesma chave.
-4. Inicie a API e o banco, e [crie o administrador explicitamente](ADMINISTRADOR.md). Login exige o schema de domínio, incluindo `cadastro__usuarios` e `cadastro__sessoes_usuario`; as migrations técnicas não criam essas tabelas.
+A criação da chave, do primeiro administrador e as duas opções de **Authorize** (login e token Bearer manual) estão no [roteiro único de execução](../README.md#2-preparar-a-configuração-privada). Não há senha padrão nem cadastro automático. O administrador usa perfil `ADMINISTRADOR` e concessão `USUARIO_GERENCIAR`, separados das credenciais de conexão MySQL.
 
 | Variável | Padrão / finalidade |
 | --- | --- |
-| `AUTH_JWT_SECRET` | Obrigatória para login; segredo aleatório de pelo menos 32 bytes |
-| `AUTH_JWT_ISSUER` | `prontuarioedu`, emissor esperado |
-| `AUTH_JWT_AUDIENCE` | `prontuario-api`, audiência esperada |
-| `AUTH_ACCESS_TOKEN_MINUTES` | `15`, aceita 1 a 60 |
-| `AUTH_REFRESH_TOKEN_DAYS` | `7`, aceita 1 a 30; prazo fixo da sessão |
-| `AUTH_REFRESH_WINDOW_SECONDS` | `60`, quando recomendar renovação |
+| `AUTH_JWT_SECRET` | Chave aleatória privada de pelo menos 32 bytes, igual em todas as réplicas |
+| `AUTH_JWT_ISSUER` | `prontuarioedu` |
+| `AUTH_JWT_AUDIENCE` | `prontuario-api` |
+| `AUTH_ACCESS_TOKEN_MINUTES` | 15, de 1 a 60 |
+| `AUTH_REFRESH_TOKEN_DAYS` | 7, de 1 a 30; prazo fixo da sessão |
+| `AUTH_REFRESH_WINDOW_SECONDS` | 60; antecedência para recomendar renovação |
 
-Recrie/reinicie a API após mudar configuração. Sem chave, a documentação e a saúde continuam acessíveis em desenvolvimento; autenticação retorna `503`. Em produção a chave é obrigatória, assim como TLS para banco/Redis e HTTPS na entrada da API. Trocar a chave invalida os access tokens existentes.
+Recrie a API após mudar configuração. Sem chave, login retorna 503 em desenvolvimento; produção exige chave configurada. Trocar a chave invalida os access tokens existentes. Login exige o schema de domínio: as migrations técnicas não criam `cadastro__usuarios` nem `cadastro__sessoes_usuario`.
 
-## Solicitar o token pelo Swagger
+O fluxo de senha serve aos clientes próprios; a API não é servidor OIDC/SSO para terceiros. O token fica somente no estado da página, sem persistência. Limpar o modal não revoga a sessão: use a rota de logout para isso, como explicado no [roteiro do Swagger](../README.md#5-abrir-e-usar-o-swagger).
 
-Abra `/docs`, clique em **Authorize** e digite o usuário e a senha cadastrados. Selecione `identity:read`; para o administrador, selecione também `admin:access`. O Swagger chama **POST `/api/v1/auth/token`** na própria API com formulário `application/x-www-form-urlencoded`: `grant_type=password`, `username`, `password` e `scope` separados por espaços. Não há client ID, client secret ou redirecionamento de login.
+## Administrador existente
 
-O fluxo de senha é destinado aos clientes próprios deste projeto. A API não se apresenta como servidor OIDC, SSO ou autorização para aplicativos de terceiros. Integrações delegadas exigem decisão futura.
+O bootstrap usa a conexão do processo/contêiner onde é executado, com senha digitada duas vezes via `getpass` e somente hash scrypt enviado ao MySQL. Cria usuário, perfil, concessão e auditoria na mesma transação. Reexecutá-lo preserva a senha local, não reativa usuários nem refaz concessões revogadas.
 
-O token fica somente no estado da página, com persistência desativada. O botão Logout do Swagger limpa esse estado; para encerrar a sessão no servidor, execute a rota de logout antes de limpar a autorização.
+Para converter um administrador externo antigo, use o mesmo comando de criação do [passo 4](../README.md#4-criar-o-administrador-da-aplicação), acrescentando `--convert-existing` após `scripts/create_admin.py`. A conversão preserva ID e concessões, mas recusa usuário inativo ou sem concessão administrativa ativa. Defina uma nova senha local no prompt. Nenhum volume deve ser apagado nem conta de outra pessoa assumida.
 
-## Usar um token já emitido no Swagger
-
-Em `/docs`, clique em **Authorize** e use a seção **BearerToken**. Cole somente o valor de `access_token`, sem escrever `Bearer`, e confirme em **Authorize**. O Swagger adiciona `Authorization: Bearer <token>` às chamadas protegidas. Use uma alternativa por vez: token manual ou login por usuário/senha. Para trocar de alternativa, limpe a autorização anterior com **Logout** no modal.
-
-Não existe um campo de token em cada operação: a autorização é configurada no modal global ou pelo cadeado da operação. Os escopos vêm do token emitido e continuam obrigatórios na API. `/health` é público. A autorização não é persistida ao recarregar a página.
+Preserve o nome de projeto Compose e o volume da instalação existente. Ao migrar da autenticação externa, configure a chave JWT e recrie o backend com os arquivos atuais; certificados e senhas antigos devem ser tratados com o responsável. A decisão está na [ADR 0010](../../docs/adr/0010-autenticacao-local.md).
 
 ## Contratos implementados
 
@@ -74,7 +62,7 @@ Cada renovação substitui o refresh token anterior; reutilizá-lo retorna `401`
 
 `authenticate_request` executa antes do endpoint. Aceita apenas Bearer no header; tokens em query/body não autenticam. Verifica HS256, assinatura, emissor, audiência, expiração, emissão, tipo de token e IDs da sessão/usuário. O algoritmo é fixado pelo servidor. Depois de validar o JWT, consulta o MySQL para recusar sessão encerrada/expirada, usuário desativado ou bloqueado e concessão administrativa revogada.
 
-Com a chave JWT configurada, credenciais ausentes ou inválidas recebem 401 antes de consultar SQL, inclusive durante indisponibilidade do banco. Um JWT válido ainda depende da sessão no MySQL: se não for possível consultá-la, `/api/v1/me` retorna 503. `/health` é público, verifica SQL e também retorna 503 quando o banco não responde; ele não revela usuários, tokens ou dados clínicos. Os cenários estão documentados na [etapa 4 do F01](docs/F01.md#etapa-4--resultado).
+Com a chave JWT configurada, credenciais ausentes ou inválidas recebem 401 antes de consultar SQL, inclusive durante indisponibilidade do banco. Um JWT válido ainda depende da sessão no MySQL: se não for possível consultá-la, `/api/v1/me` retorna 503. `/health` é público, verifica SQL e também retorna 503 quando o banco não responde; ele não revela usuários, tokens ou dados clínicos. Os cenários estão documentados na [etapa 4 do F01](../../docs/historico/F01.md#etapa-4--resultado).
 
 A senha usa scrypt com salt aleatório; o banco recebe somente o hash. O refresh token tem segredo aleatório e seu hash SHA-256 é persistido. Access e refresh tokens não são senhas: devem ser mantidos fora de logs, URLs, Git e armazenamento inseguro dos clientes. Logout e troca de senha bloqueiam também os JWTs já emitidos por meio da sessão.
 
@@ -84,16 +72,6 @@ Cinco falhas de login bloqueiam a conta por 15 minutos. O limitador HTTP continu
 
 ## Proteger novos endpoints
 
-```python
-@router.get("/api/v1/minha-operacao")
-def operation(
-    user: Annotated[
-        AuthenticatedUser, Security(authenticate_request, scopes=["identity:read"])
-    ],
-):
-    return {"subject": user.subject}
-```
-
-Importe `Annotated`, `Security`, `AuthenticatedUser` e `authenticate_request` como em `routes/api.py`. Para dados clínicos, aplique também `require_record_access` e as regras aprovadas do negócio; ser administrador não libera prontuários automaticamente.
+Declare `Security(authenticate_request, scopes=["identity:read"])` como dependência antes da lógica da rota. O exemplo executável e a configuração de respostas/OpenAPI estão em [desenvolvimento](DESENVOLVIMENTO.md#criar-uma-rota-protegida). Para dados clínicos, exija também `require_record_access` e as regras aprovadas; ser administrador não libera prontuários automaticamente.
 
 Os testes cobrem assinatura/claims, login real com MySQL descartável, bloqueio por tentativas, refresh de uso único, logout, troca de senha, revogação e Swagger na origem do Codespace. Nenhuma credencial ou dado de teste é inserido no banco da aplicação.
