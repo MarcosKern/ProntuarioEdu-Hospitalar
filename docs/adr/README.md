@@ -1,15 +1,18 @@
 # Decisões arquiteturais
 
-## Responsabilidade
+ADRs registram contexto, alternativas, decisão, consequências e aprovação. São histórico de decisões, não roteiros de instalação. O estado atual e a organização do código estão em [arquitetura](../architecture.md); a execução, no [roteiro do backend](../../backend/README.md).
 
-Registro de contexto, alternativas, decisão, consequências e aprovação.
+| Registro | Assunto |
+| --- | --- |
+| [0001](0001-arquitetura-inicial.md) | MVC e limites dos componentes |
+| [0002](0002-ambiente-desenvolvimento.md) | Ambiente inicial |
+| [0003](0003-seguranca-operacao.md) | Segurança e operação |
+| [0004](0004-mysql-externo.md) | MySQL externo |
+| [0005](0005-correcoes-revisao.md) | Correções após revisão |
+| [0006](0006-dependencias-e-operacao.md) | Separação de dependências e operação |
+| [0007](0007-codespaces-e-ambiente-mysql.md) | Codespaces e escolhas de ambiente |
+| [0008](0008-mysql-container-desenvolvimento.md) | MySQL opcional em contêiner |
+| [0009](0009-administrador-aplicacao-keycloak.md) | Administrador externo; substituída pela 0010 |
+| [0010](0010-autenticacao-local.md) | Login local/JWT atual, substituindo as decisões anteriores de identidade |
 
-## Divisão de competências
-
-Usar arquivos numerados. Distinguir proposta, aprovação e substituição. Uma mudança de arquitetura deve referenciar a decisão afetada, sem apresentar proposta como implementação aprovada.
-
-## Como desenvolver aqui
-
-Defina primeiro a entrada, a saída e as dependências permitidas da alteração. Implemente apenas a responsabilidade desta pasta; mudanças em outras fronteiras devem atualizar seus contratos e testes. Consulte o README do componente e a ADR inicial antes de introduzir dependências.
-
-A [ADR 0010](0010-autenticacao-local.md) registra o login local atual e substitui as decisões anteriores de autenticação. ADRs históricas mantêm seu contexto, com aviso de substituição.
+Para nova decisão, use numeração sequencial e explicite se é proposta, aprovada ou substituída. Referencie a ADR afetada e obtenha a validação aplicável antes de introduzir arquitetura ou dependências. Não apague uma decisão antiga só porque foi substituída.

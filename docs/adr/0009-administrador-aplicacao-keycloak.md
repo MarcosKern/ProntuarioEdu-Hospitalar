@@ -1,6 +1,6 @@
 # ADR 0009 — Administrador da aplicação com Keycloak de desenvolvimento
 
-Atualização de 12/11/2026: as decisões de autenticação abaixo são históricas e foram substituídas pelo [login local da ADR 0010](0010-autenticacao-local.md). A configuração atual está em `backend/AUTHENTICATION.md`.
+Atualização de 12/11/2026: as decisões de autenticação abaixo são históricas e foram substituídas pelo [login local da ADR 0010](0010-autenticacao-local.md). A configuração atual está em [referência de autenticação](../../backend/docs/AUTENTICACAO.md).
 
 Status: autorizado pelo responsável, que escolheu Keycloak no Docker de desenvolvimento e solicitou o administrador dos usuários do sistema de prontuários.
 
@@ -10,4 +10,4 @@ O UUID inicial é compartilhado entre o `sub` Keycloak e o `id` do cadastro (`pr
 
 O bootstrap é explícito, transacional, recusa colisões e não reativa permissões revogadas. Senha aleatória e chaves TLS ficam fora do Git/build, com troca obrigatória da senha no primeiro acesso. As migrations não inserem cadastros. Nenhum paciente, profissional ou turma é criado; o administrador não ganha acesso clínico implícito.
 
-Testes MySQL isolados verificam criação, idempotência, recusa de takeover, desativação/revogação e autorização HTTP. O setup verifica persistência dos arquivos privados e confiança TLS. O provedor real é validado separadamente. Veja o [roteiro operacional](../../backend/ADMINISTRADOR.md).
+Testes MySQL isolados verificam criação, idempotência, recusa de takeover, desativação/revogação e autorização HTTP. O setup verifica persistência dos arquivos privados e confiança TLS. O provedor real é validado separadamente. Veja o [roteiro operacional](../../backend/docs/AUTENTICACAO.md#administrador-existente).
