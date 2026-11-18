@@ -62,7 +62,7 @@ def test_openapi_covers_public_operations_success_errors_and_scopes(schema):
         assert operation["summary"] and operation["description"]
         identifiers.append(identifier)
         assert operation.get("security") == (
-            [{"OAuth2PasswordBearer": scopes}] if scopes else None
+            [{"OAuth2PasswordBearer": scopes}, {"BearerToken": []}] if scopes else None
         )
         success = operation["responses"]["200" if response_model else "204"]
         if response_model:
