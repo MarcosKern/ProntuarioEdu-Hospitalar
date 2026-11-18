@@ -48,6 +48,12 @@ O fluxo de senha é destinado aos clientes próprios deste projeto. A API não s
 
 O token fica somente no estado da página, com persistência desativada. O botão Logout do Swagger limpa esse estado; para encerrar a sessão no servidor, execute a rota de logout antes de limpar a autorização.
 
+## Usar um token já emitido no Swagger
+
+Em `/docs`, clique em **Authorize** e use a seção **BearerToken**. Cole somente o valor de `access_token`, sem escrever `Bearer`, e confirme em **Authorize**. O Swagger adiciona `Authorization: Bearer <token>` às chamadas protegidas. Use uma alternativa por vez: token manual ou login por usuário/senha. Para trocar de alternativa, limpe a autorização anterior com **Logout** no modal.
+
+Não existe um campo de token em cada operação: a autorização é configurada no modal global ou pelo cadeado da operação. Os escopos vêm do token emitido e continuam obrigatórios na API. `/health` é público. A autorização não é persistida ao recarregar a página.
+
 ## Contratos implementados
 
 | Método e rota | Entrada / efeito |
