@@ -24,6 +24,7 @@ from prontuario_backend.config.settings import get_settings
 from tests.safety import validate_test_database
 
 
+
 @pytest.fixture(autouse=True)
 def isolated_settings(monkeypatch):
     url = os.getenv("MYSQL_TEST_URL")
