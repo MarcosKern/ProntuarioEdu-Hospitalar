@@ -7,7 +7,7 @@ Este guia cuida apenas do editor e das ferramentas. **Para iniciar os contêiner
 1. No GitHub, abra o repositório e selecione a branch que contém o código desejado e `.devcontainer/devcontainer.json`.
 2. Clique em **Code → Codespaces → Create codespace on…**. Se aparecer uma escolha de configuração, selecione **ProntuarioEdu — desenvolvimento Python 3.12**.
 3. Aguarde a criação. Em **View creation log**, acompanhe a instalação; não execute outro setup em paralelo.
-4. O GitHub executa `python3 .devcontainer/setup.py`, que cria `backend/.venv`, instala `requirements-dev.txt`, executa `pip check` e copia `.env.example` somente se `.env` ainda não existe.
+4. O GitHub executa `python3 .devcontainer/setup.py`, que cria `backend/.venv`, instala `requirements-dev.txt`, executa `pip check` e copia `.env.example`/`.env.test.example` somente quando `.env`/`.env.test` ainda não existem.
 5. Ao ver a confirmação de dependências prontas e de que nenhuma migration foi executada, abra **Terminal → New Terminal** e confira, da raiz:
 
 ```bash
