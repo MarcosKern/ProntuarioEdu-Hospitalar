@@ -33,7 +33,7 @@ def buscar_por_identificador(identificador):
         resultado = connection.execute(
             sql,
             {"identificador": identificador}
-        ).mappings().one_or_none
+        ).mappings().one_or_none()
 
     return resultado
 
@@ -58,4 +58,3 @@ def listar_ativos(limite, deslocamento):
 
     return resultados
 
-    
