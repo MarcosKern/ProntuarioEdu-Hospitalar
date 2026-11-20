@@ -64,7 +64,7 @@ O contrato reutilizável está em [`views/pagination.py`](../src/prontuario_back
 
 Valores fora dos limites recebem 422. A quantidade por página e o teto de offset limitam o custo das consultas; pesquisas muito profundas devem ser reduzidas por filtros do fluxo. Novos filtros devem ser declarados no DTO de query da listagem, que pode estender `PaginationParams`; parâmetros desconhecidos não são ignorados.
 
-Use `Annotated[PaginationParams, Query()]` na entrada e `PageResponse[ItemResponse]` como `response_model`. `ItemResponse` deve ser a View dos campos públicos do recurso, não um dicionário livre nem uma entidade ORM. O parâmetro de tipo indica quais campos cada item pode conter. Nenhum endpoint de listagem foi criado nesta etapa.
+Use `Annotated[PaginationParams, Query()]` na entrada e `PageResponse[ItemResponse]` como `response_model`. `ItemResponse` deve ser a View dos campos públicos do recurso, não um dicionário livre nem uma entidade ORM. O parâmetro de tipo indica quais campos cada item pode conter. A listagem de unidades é a primeira aplicação desse contrato.
 
 O JSON paginado contém:
 
@@ -75,6 +75,26 @@ O JSON paginado contém:
 `total` é a contagem após os **mesmos filtros e autorizações** de `items`, antes de aplicar limit/offset. O Controller encaminha os parâmetros validados ao Model; o Model recebe valores simples, aplica autorização/filtros, ordenação e paginação, sem importar Views. Utilize uma ordenação fixa para o fluxo, com chave única de desempate, e uma leitura consistente entre contagem e itens.
 
 Não calcule `total` sobre dados de outros usuários ou organizações. Página vazia, inclusive com offset além do total, é sucesso 200 com `items=[]`. O contrato recusa total negativo, mais itens que o limite e itens posicionados além do total informado.
+
+## Unidades
+
+As rotas abaixo são habilitadas em desenvolvimento e testes. Não exigem autenticação nesta etapa; a integração com a autenticação pertence à Prioridade 5.
+
+| Método e caminho | Entrada | Sucesso | Respostas de erro documentadas |
+| --- | --- | --- | --- |
+| `POST /api/v1/unidades` | JSON `codigo` (até 30), `nome` (até 120), `tipo` (até 40); campos extras recusados | 201, objeto criado | 409 código duplicado; 422 entrada inválida |
+| `GET /api/v1/unidades` | Query `limit` e `offset` | 200, página de unidades ativas | 422 paginação inválida |
+| `GET /api/v1/unidades/{id}` | `id` UUID | 200, objeto consultado | 404 não encontrada; 422 UUID inválido |
+| `PATCH /api/v1/unidades/{id}` | JSON parcial com `nome` e/ou `tipo`; campos extras recusados | 200, objeto atualizado | 404 não encontrada; 422 entrada inválida |
+| `DELETE /api/v1/unidades/{id}` | `id` UUID | 204, sem corpo; mantém o registro com `ativo=0` | 404 não encontrada; 422 UUID inválido |
+
+Exemplo de criação:
+
+```json
+{"codigo":"UN-TESTE-01","nome":"Unidade Escola","tipo":"ensino"}
+```
+
+O código é único. A listagem conta e retorna somente unidades ativas, ordenadas por `nome, id`. PATCH preserva `id` e `codigo`; como `nome` e `tipo` não são anuláveis no DDL, `null` explícito é recusado.
 
 ## Testes e acompanhamento
 
