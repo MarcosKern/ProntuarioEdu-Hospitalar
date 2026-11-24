@@ -106,7 +106,7 @@ pip-audit==2.10.1
     # via -r requirements-dev.in
 pip-requirements-parser==32.0.1
     # via pip-audit
-pip-tools==7.6.2
+pip-tools==7.7.0
     # via -r requirements-dev.in
 platformdirs==4.14.5
     # via pip-audit
@@ -159,7 +159,7 @@ requests==2.34.2
     #   pip-audit
 rich==15.0.0
     # via pip-audit
-ruff==0.17.4
+ruff==0.17.5
     # via -r requirements-dev.in
 sortedcontainers==2.4.0
     # via cyclonedx-python-lib
