@@ -23,7 +23,7 @@ def buscar_por_id(medicamento_id):
 
 
 def listar_ativos(limite: int, deslocamento: int, nome=None):
-    """Lista ativos com limite inteiro de 1–100 e deslocamento de 0–100000."""
+    """Lista ativos com limite inteiro entre 1 e 100 e deslocamento entre 0 e 100000."""
     for parametro, valor in (
         ("limite", limite),
         ("deslocamento", deslocamento),

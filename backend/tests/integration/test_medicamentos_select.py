@@ -73,16 +73,25 @@ def test_buscar_por_id_retorna_catalogo_e_id_ausente(medicamentos_schema):
     assert buscar_por_id(str(uuid4())) is None
 
 
-def test_listar_ativos_ordena_e_aplica_paginacao(medicamentos_schema):
+def test_listar_ativos_filtra_inativos_ordena_e_aplica_paginacao(medicamentos_schema):
     with medicamentos_schema.begin() as connection:
         inserir_medicamento(connection, "Zinco")
         inserir_medicamento(connection, "Amoxicilina")
         inserir_medicamento(connection, "Azitromicina")
-        inserir_medicamento(connection, "Inativo", ativo=0)
+        inserir_medicamento(connection, "Aspirina inativa", ativo=0)
+        inserir_medicamento(connection, "Paracetamol")
 
-    pagina = listar_ativos(2, 0)
-    assert [item["nome"] for item in pagina] == ["Amoxicilina", "Azitromicina"]
-    assert listar_ativos(10, 10) == []
+    assert [
+        item["nome"] for item in listar_ativos(100, 0)
+    ] == ["Amoxicilina", "Azitromicina", "Paracetamol", "Zinco"]
+    assert [
+        item["nome"] for item in listar_ativos(2, 0)
+    ] == ["Amoxicilina", "Azitromicina"]
+    assert [
+        item["nome"] for item in listar_ativos(2, 2)
+    ] == ["Paracetamol", "Zinco"]
+    assert listar_ativos(2, 4) == []
+    assert listar_ativos(100, 100000) == []
 
 
 def test_filtrar_nome_com_like_e_paginar(medicamentos_schema):
@@ -94,3 +103,31 @@ def test_filtrar_nome_com_like_e_paginar(medicamentos_schema):
     pagina = listar_ativos(1, 1, "dipirona")
     assert len(pagina) == 1
     assert "Dipirona" in pagina[0]["nome"]
+
+
+@pytest.mark.parametrize(
+    ("limite", "deslocamento", "erro"),
+    [
+        (-1, 0, ValueError),
+        (1, -1, ValueError),
+        (None, 0, TypeError),
+        (1.5, 0, TypeError),
+        (True, False, TypeError),
+        (0, 0, ValueError),
+        (101, 0, ValueError),
+        (1, 100001, ValueError),
+    ],
+)
+def test_listar_ativos_rejeita_paginacao_invalida_antes_do_sql(
+    medicamentos_schema, monkeypatch, limite, deslocamento, erro
+):
+    def banco_nao_deve_ser_acessado():
+        pytest.fail("A validação deve acontecer antes da conexão com o banco")
+
+    monkeypatch.setattr(
+        "prontuario_backend.models.medicamentos.engine",
+        banco_nao_deve_ser_acessado,
+    )
+
+    with pytest.raises(erro):
+        listar_ativos(limite, deslocamento)
