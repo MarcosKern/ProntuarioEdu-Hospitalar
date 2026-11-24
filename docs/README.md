@@ -1,23 +1,29 @@
-# Documentação e divisão de competências
+# Índice da documentação
 
-- [Arquitetura](architecture.md): visão do fluxo e das dependências entre componentes.
-- [Alternativas](architecture-options.md): opções, vantagens e critérios de escolha.
-- [ADRs](adr/README.md): propostas e decisões arquiteturais com aprovação registrada.
+Para executar o projeto, comece no [roteiro único do backend](../backend/README.md). Cada assunto abaixo tem um documento responsável; novos guias devem apontar para ele, em vez de copiar comandos de instalação e subida.
 
-Documentação de uma pasta explica responsabilidade, dependências e como desenvolver nela. ADR explica por que uma decisão foi escolhida. README principal orienta a navegação e o plano de desenvolvimento. Contratos descrevem a fronteira pública; não duplicar manualmente todas as suas definições aqui.
-
-## Quem participa de uma mudança
-
-| Competência | Responsabilidade |
+| Assunto | Fonte principal |
 | --- | --- |
-| Produto e domínio | Definir regras reais, usuários e critérios de aceitação |
-| Responsável pela arquitetura | Validar limites, decisões e impactos; registrar aprovação |
-| Back-end | Regras, autorização no servidor, API e persistência |
-| Desktop | Experiência Python e consumo correto da API |
-| Web | Experiência responsiva, acessibilidade e consumo da API |
-| Qualidade | Evidências de critérios de aceitação e comportamento nas fronteiras |
-| Infraestrutura | Reprodutibilidade, implantação e recuperação |
+| Docker, administrador inicial, Swagger, logs e parada | [Backend](../backend/README.md) |
+| Preparação/reconstrução do editor remoto | [Codespaces](../.devcontainer/README.md) |
+| MVC, disposição das pastas e competências | [Arquitetura](architecture.md) |
+| Desenvolvimento Python, endpoint documentado e dependências | [Desenvolvimento](../backend/docs/DESENVOLVIMENTO.md) |
+| Banco descartável, pytest e CI | [Testes](../backend/tests/README.md) |
+| Tokens, sessões e administrador existente | [Autenticação](../backend/docs/AUTENTICACAO.md) |
+| MySQL externo, TLS, migrations e backup | [MySQL](../backend/docs/MYSQL.md) |
+| DTOs, validação, erros HTTP e paginação | [Contratos HTTP](../backend/docs/CONTRATOS.md) |
+| Controles de segurança e operação | [Segurança](../backend/docs/SEGURANCA.md) |
+| Modelo físico, dicionário e SQL | [Banco de domínio](../backend/docs/database/README.md) |
+| Exportação OpenAPI e compatibilidade dos clientes | [Contratos públicos](../contracts/README.md) |
+| Hospedagem e limites da implantação atual | [Infraestrutura](../infra/README.md) |
+| Clientes ainda em desenvolvimento | [Desktop](../desktop/README.md) e [Web](../web/README.md) |
+| Motivos e aprovações das decisões | [ADRs](adr/README.md) |
+| Revisão, permissões e merge | [Governança](repository-governance.md) |
 
-São responsabilidades, não exigência de uma pessoa por papel. Uma mesma pessoa pode atuar em várias competências; mudanças de contrato e decisões precisam ser revisadas pelos componentes afetados. Nenhuma identidade de aprovador foi definida automaticamente.
+## Histórico
 
-Uma alteração funcional deve indicar o caso de uso, os componentes afetados, os contratos alterados, os testes necessários e se exige revisão da arquitetura. A organização MVC foi escolhida pelo responsável; FastAPI e MySQL externo já estão definidos; o login local JWT está definido na ADR 0010; tecnologias dos clientes e detalhes clínicos continuam pendentes. Exemplos documentais não aprovam funcionalidades clínicas nem substituem implementação.
+O [registro do card F01](historico/F01.md) conserva evidências e resultados datados. Ele não é um guia de instalação nem comprova o estado atual dos checks no GitHub. As ADRs preservam decisões substituídas com o contexto de sua época.
+
+## Manter a documentação
+
+Ao mudar uma funcionalidade, atualize seu documento responsável e os links afetados. Comandos executáveis precisam informar diretório, pré-requisitos, resultado esperado e efeito nos dados. Não inclua segredos ou registros reais nos exemplos. Propostas de produto e arquitetura precisam de aprovação própria; exemplos didáticos não homologam regras clínicas.

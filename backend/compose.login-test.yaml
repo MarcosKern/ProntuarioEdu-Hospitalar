@@ -1,0 +1,10 @@
+# Usar somente após preparar prontuario_test_login conforme LOGIN_TEST.md.
+services:
+  backend:
+    environment:
+      DATABASE_URL: mysql+pymysql://prontuario_test:test-only-password@mysql:3306/prontuario_test_login?charset=utf8mb4
+      TEST_SEED_USERS: "1"
+      AUTH_JWT_SECRET: public-login-test-signing-key-not-for-production-12345
+    volumes:
+      - ./scripts/seed_test_users.py:/app/scripts/seed_test_users.py:ro
+    command: sh -c 'python -m alembic upgrade head && python scripts/seed_test_users.py && python -m uvicorn prontuario_backend.main:app --host 0.0.0.0 --port 8000 --no-access-log --no-proxy-headers'

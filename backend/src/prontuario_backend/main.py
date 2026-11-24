@@ -10,7 +10,7 @@ from starlette.responses import JSONResponse, Response
 
 from prontuario_backend.config.http import SecurityMiddleware
 from prontuario_backend.config.settings import get_settings
-from prontuario_backend.config.swagger import swagger_config
+from prontuario_backend.config.swagger import enable_bearer_token_input, swagger_config
 from prontuario_backend.routes.api import router
 from prontuario_backend.views.errors import error_body
 
@@ -22,6 +22,7 @@ def create_app():
     if not logging.getLogger("prontuario.requests").handlers:
         logging.getLogger("prontuario.requests").addHandler(logging.StreamHandler())
     app = FastAPI(**swagger_config(settings))
+    enable_bearer_token_input(app)
     app.add_middleware(SecurityMiddleware, settings=settings)
     app.add_middleware(
         CORSMiddleware,

@@ -14,7 +14,7 @@ Campos desconhecidos são recusados. Um campo como `admin`, `user_id` ou `role` 
 
 O formulário de login aceita `client_id` e `client_secret` somente vazios, para compatibilidade com a interface Swagger. Campo repetido, UTF-8 inválido, formulário incompleto, tipo de concessão diferente ou campo não suportado recebe **400**. O tipo de conteúdo deve ser `application/x-www-form-urlencoded` (aceita variações de maiúsculas/minúsculas e parâmetro de charset); enviar JSON ao login recebe **415**.
 
-JSON malformado, campo obrigatório ausente, tipo/tamanho inválido ou propriedade extra nas entradas JSON recebe **422**. Credenciais ou sessão inválidas continuam recebendo **401**. Uma mudança relevante para os clientes é que login estruturalmente inválido recebe 400; uma credencial com formato válido, mas incorreta, recebe 401. Consulte as rotas e o fluxo de tokens em [autenticação](AUTHENTICATION.md).
+JSON malformado, campo obrigatório ausente, tipo/tamanho inválido ou propriedade extra nas entradas JSON recebe **422**. Credenciais ou sessão inválidas continuam recebendo **401**. Uma mudança relevante para os clientes é que login estruturalmente inválido recebe 400; uma credencial com formato válido, mas incorreta, recebe 401. Consulte as rotas e o fluxo de tokens em [autenticação](AUTENTICACAO.md).
 
 ## Respostas e campos públicos
 
@@ -55,7 +55,7 @@ As respostas processadas pelo middleware incluem `Cache-Control: no-store`. Head
 
 ## Paginação para futuras listagens
 
-O contrato reutilizável está em [`views/pagination.py`](src/prontuario_backend/views/pagination.py). Os endpoints atuais de identidade/saúde retornam objetos individuais; futuras listagens deverão adotar essa política.
+O contrato reutilizável está em [`views/pagination.py`](../src/prontuario_backend/views/pagination.py). Os endpoints atuais de identidade/saúde retornam objetos individuais; futuras listagens deverão adotar essa política.
 
 | Parâmetro de query | Regra |
 | --- | --- |
@@ -78,4 +78,4 @@ Não calcule `total` sobre dados de outros usuários ou organizações. Página 
 
 ## Testes e acompanhamento
 
-Os testes unitários verificam os DTOs e os limites. Os testes de contrato usam requisições HTTP reais contra a aplicação em memória, com rotas temporárias exclusivas dos testes para paginação; não abrem banco nem criam dados na aplicação. A regressão do login é validada separadamente com MySQL descartável. Evidências e autorizações estão na [etapa 3 do F01](docs/F01.md).
+Os testes unitários verificam os DTOs e os limites. Os testes de contrato usam requisições HTTP reais contra a aplicação em memória, com rotas temporárias exclusivas dos testes para paginação; não abrem banco nem criam dados na aplicação. A regressão do login é validada separadamente com MySQL descartável. Evidências e autorizações estão na [etapa 3 do F01](../../docs/historico/F01.md).

@@ -33,3 +33,32 @@ def swagger_config(settings: Settings):
             "scopes": ["identity:read"],
         },
     }
+
+
+def enable_bearer_token_input(app):
+    """Documenta o JWT já emitido como alternativa ao formulário de login."""
+    original_openapi = app.openapi
+
+    def openapi():
+        schema = original_openapi()
+        schemes = schema.setdefault("components", {}).setdefault("securitySchemes", {})
+        schemes["BearerToken"] = {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Cole apenas o access_token, sem o prefixo Bearer. Os escopos exigidos continuam sendo verificados pela API.",
+        }
+        for methods in schema.get("paths", {}).values():
+            for operation in methods.values():
+                if not isinstance(operation, dict):
+                    continue
+                security = operation.get("security", [])
+                if any(
+                    "OAuth2PasswordBearer" in requirement for requirement in security
+                ):
+                    # Entradas separadas significam alternativas (OR), não dois tokens obrigatórios.
+                    if {"BearerToken": []} not in security:
+                        security.append({"BearerToken": []})
+        return schema
+
+    app.openapi = openapi
