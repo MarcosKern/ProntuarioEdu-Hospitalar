@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -81,15 +82,17 @@ def test_listar_ativos_filtra_inativos_ordena_e_aplica_paginacao(medicamentos_sc
         inserir_medicamento(connection, "Aspirina inativa", ativo=0)
         inserir_medicamento(connection, "Paracetamol")
 
-    assert [
-        item["nome"] for item in listar_ativos(100, 0)
-    ] == ["Amoxicilina", "Azitromicina", "Paracetamol", "Zinco"]
-    assert [
-        item["nome"] for item in listar_ativos(2, 0)
-    ] == ["Amoxicilina", "Azitromicina"]
-    assert [
-        item["nome"] for item in listar_ativos(2, 2)
-    ] == ["Paracetamol", "Zinco"]
+    assert [item["nome"] for item in listar_ativos(100, 0)] == [
+        "Amoxicilina",
+        "Azitromicina",
+        "Paracetamol",
+        "Zinco",
+    ]
+    assert [item["nome"] for item in listar_ativos(2, 0)] == [
+        "Amoxicilina",
+        "Azitromicina",
+    ]
+    assert [item["nome"] for item in listar_ativos(2, 2)] == ["Paracetamol", "Zinco"]
     assert listar_ativos(2, 4) == []
     assert listar_ativos(100, 100000) == []
 
@@ -103,6 +106,41 @@ def test_filtrar_nome_com_like_e_paginar(medicamentos_schema):
     pagina = listar_ativos(1, 1, "dipirona")
     assert len(pagina) == 1
     assert "Dipirona" in pagina[0]["nome"]
+
+
+def test_filtrar_nome_trata_curingas_como_literais(medicamentos_schema):
+    with medicamentos_schema.begin() as connection:
+        inserir_medicamento(connection, "A%B")
+        inserir_medicamento(connection, "A_B")
+        inserir_medicamento(connection, "A!B")
+        inserir_medicamento(connection, "ACB")
+
+    assert [item["nome"] for item in listar_ativos(100, 0, "%")] == ["A%B"]
+    assert [item["nome"] for item in listar_ativos(100, 0, "_")] == ["A_B"]
+    assert [item["nome"] for item in listar_ativos(100, 0, "!")] == ["A!B"]
+
+
+def test_listar_ativos_vincula_termo_de_busca_ao_sql(monkeypatch):
+    database = MagicMock()
+    connection = database.connect.return_value.__enter__.return_value
+    connection.execute.return_value.mappings.return_value.all.return_value = []
+    monkeypatch.setattr(
+        "prontuario_backend.models.medicamentos.engine",
+        lambda: database,
+    )
+    nome = "Dose d'água"
+
+    assert listar_ativos(10, 0, nome) == []
+
+    statement, parameters = connection.execute.call_args.args
+    assert "nome LIKE :padrao" in statement.text
+    assert "ESCAPE '!'" in statement.text
+    assert nome not in statement.text
+    assert parameters == {
+        "limite": 10,
+        "deslocamento": 0,
+        "padrao": f"%{nome}%",
+    }
 
 
 @pytest.mark.parametrize(

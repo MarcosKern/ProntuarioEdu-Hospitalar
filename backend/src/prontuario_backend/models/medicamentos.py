@@ -23,7 +23,7 @@ def buscar_por_id(medicamento_id):
 
 
 def listar_ativos(limite: int, deslocamento: int, nome=None):
-    """Lista ativos com limite inteiro entre 1 e 100 e deslocamento entre 0 e 100000."""
+    """Lista ativos; nome é substring literal, com limite 1-100 e deslocamento 0-100000."""
     for parametro, valor in (
         ("limite", limite),
         ("deslocamento", deslocamento),
@@ -45,8 +45,11 @@ def listar_ativos(limite: int, deslocamento: int, nome=None):
     parametros = {"limite": limite, "deslocamento": deslocamento}
 
     if nome is not None:
-        query += " AND nome LIKE :padrao"
-        parametros["padrao"] = f"%{nome}%"
+        query += " AND nome LIKE :padrao ESCAPE '!'"
+        nome_literal = (
+            str(nome).replace("!", "!!").replace("%", "!%").replace("_", "!_")
+        )
+        parametros["padrao"] = f"%{nome_literal}%"
 
     query += " ORDER BY nome, id LIMIT :limite OFFSET :deslocamento"
 

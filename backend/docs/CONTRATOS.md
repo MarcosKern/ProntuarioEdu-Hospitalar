@@ -76,6 +76,14 @@ O JSON paginado contém:
 
 Não calcule `total` sobre dados de outros usuários ou organizações. Página vazia, inclusive com offset além do total, é sucesso 200 com `items=[]`. O contrato recusa total negativo, mais itens que o limite e itens posicionados além do total informado.
 
+### Busca literal do catálogo de medicamentos
+
+Quando o catálogo de medicamentos for exposto por uma listagem HTTP, o filtro opcional `nome` deve ser uma substring literal. Os caracteres `%`, `_` e `!` não são tratados como sintaxe especial pelo usuário: a busca procura o caractere correspondente no nome cadastrado.
+
+`nome` não cria pesquisa por expressões ou curingas SQL. O espaço em branco não é removido automaticamente e não há correção ortográfica, normalização fonética ou ranking por relevância. O limite e o offset seguem a política desta página.
+
+A implementação do Model usa `LIKE` com escapador explícito e vincula o termo como parâmetro. Antes da exposição pública, definir o DTO de consulta, a View dos campos públicos, a autorização necessária, a contagem de resultados e os erros OpenAPI. A decisão está registrada na [ADR 0011](../../docs/adr/0011-catalogo-medicamentos.md).
+
 ## Testes e acompanhamento
 
 Os testes unitários verificam os DTOs e os limites. Os testes de contrato usam requisições HTTP reais contra a aplicação em memória, com rotas temporárias exclusivas dos testes para paginação; não abrem banco nem criam dados na aplicação. A regressão do login é validada separadamente com MySQL descartável. Evidências e autorizações estão na [etapa 3 do F01](../../docs/historico/F01.md).
