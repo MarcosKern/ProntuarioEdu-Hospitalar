@@ -19,6 +19,10 @@ def swagger_config(settings: Settings):
         "openapi_tags": [
             {"name": "Desenvolvimento", "description": "Saúde da API e do MySQL."},
             {
+                "name": "Unidades",
+                "description": "Cadastro e consulta de unidades.",
+            },
+            {
                 "name": "Autenticação",
                 "description": "Login, tokens e sessões da aplicação.",
             },
