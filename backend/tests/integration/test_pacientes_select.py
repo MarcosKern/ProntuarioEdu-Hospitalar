@@ -1,17 +1,18 @@
-
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import text
 
 from prontuario_backend.config.database import engine
 from prontuario_backend.models.pacientes import (
     buscar_por_id,
     buscar_por_identificador,
+    buscar_por_nome,
     listar_ativos,
 )
 
 
-def criar_paciente(connection, nome, identificador, ativo=1):
+def criar_paciente(connection, nome, identificador, ativo=1, ficticio=1):
     paciente_id = str(uuid4())
 
     connection.execute(
@@ -19,14 +20,15 @@ def criar_paciente(connection, nome, identificador, ativo=1):
             INSERT INTO cadastro__pacientes
                 (id, identificador, nome, ativo, ficticio)
             VALUES
-                (:id, :identificador, :nome, :ativo, 1)
+                (:id, :identificador, :nome, :ativo, :ficticio)
         """),
         {
             "id": paciente_id,
             "identificador": identificador,
             "nome": nome,
-            "ativo": ativo
-        }
+            "ativo": ativo,
+            "ficticio": ficticio,
+        },
     )
 
     return paciente_id
@@ -47,8 +49,8 @@ def test_buscar_por_id(mysql_url, application_schema):
             {
                 "id": paciente_id,
                 "identificador": identificador,
-                "nome": "Paciente Teste"
-            }
+                "nome": "Paciente Teste",
+            },
         )
 
     try:
@@ -65,7 +67,34 @@ def test_buscar_por_id(mysql_url, application_schema):
                     DELETE FROM cadastro__pacientes
                     WHERE id = :id
                 """),
-                {"id": paciente_id}
+                {"id": paciente_id},
+            )
+
+
+def test_buscar_por_id_ignora_nao_ficticio(mysql_url, application_schema):
+    identificador = f"PAC-{uuid4().hex[:12]}"
+
+    with engine().begin() as connection:
+        paciente_id = criar_paciente(
+            connection,
+            "Paciente Não Fictício",
+            identificador,
+            ficticio=0,
+        )
+
+    try:
+        paciente = buscar_por_id(paciente_id)
+
+        assert paciente is None
+
+    finally:
+        with engine().begin() as connection:
+            connection.execute(
+                text("""
+                    DELETE FROM cadastro__pacientes
+                    WHERE id = :id
+                """),
+                {"id": paciente_id},
             )
 
 
@@ -74,9 +103,7 @@ def test_buscar_por_identificador(mysql_url, application_schema):
 
     with engine().begin() as connection:
         paciente_id = criar_paciente(
-            connection,
-            "Paciente Identificador",
-            identificador
+            connection, "Paciente Identificador", identificador
         )
 
     try:
@@ -93,7 +120,34 @@ def test_buscar_por_identificador(mysql_url, application_schema):
                     DELETE FROM cadastro__pacientes
                     WHERE id = :id
                 """),
-                {"id": paciente_id}
+                {"id": paciente_id},
+            )
+
+
+def test_buscar_por_identificador_ignora_nao_ficticio(mysql_url, application_schema):
+    identificador = f"PAC-{uuid4().hex[:12]}"
+
+    with engine().begin() as connection:
+        paciente_id = criar_paciente(
+            connection,
+            "Paciente Não Fictício",
+            identificador,
+            ficticio=0,
+        )
+
+    try:
+        paciente = buscar_por_identificador(identificador)
+
+        assert paciente is None
+
+    finally:
+        with engine().begin() as connection:
+            connection.execute(
+                text("""
+                    DELETE FROM cadastro__pacientes
+                    WHERE id = :id
+                """),
+                {"id": paciente_id},
             )
 
 
@@ -103,13 +157,8 @@ def test_buscar_por_id_ausente(mysql_url, application_schema):
     assert paciente is None
 
 
-def test_buscar_por_identificador_ausente(
-    mysql_url,
-    application_schema
-):
-    paciente = buscar_por_identificador(
-        f"PAC-{uuid4().hex[:12]}"
-    )
+def test_buscar_por_identificador_ausente(mysql_url, application_schema):
+    paciente = buscar_por_identificador(f"PAC-{uuid4().hex[:12]}")
 
     assert paciente is None
 
@@ -120,20 +169,14 @@ def test_listar_ativos_vazio(mysql_url, application_schema):
     # Cria apenas pacientes inativos.
     with engine().begin() as connection:
         paciente_id = criar_paciente(
-            connection,
-            "Paciente Inativo",
-            f"{prefixo}-001",
-            ativo=0
+            connection, "Paciente Inativo", f"{prefixo}-001", ativo=0
         )
 
     try:
         # O paciente existe, mas não deve aparecer na listagem.
         pacientes = listar_ativos(10, 0)
 
-        assert not any(
-            paciente["id"] == paciente_id
-            for paciente in pacientes
-        )
+        assert not any(paciente["id"] == paciente_id for paciente in pacientes)
 
     finally:
         with engine().begin() as connection:
@@ -142,7 +185,37 @@ def test_listar_ativos_vazio(mysql_url, application_schema):
                     DELETE FROM cadastro__pacientes
                     WHERE id = :id
                 """),
-                {"id": paciente_id}
+                {"id": paciente_id},
+            )
+
+
+def test_listar_ativos_ignora_nao_ficticio(mysql_url, application_schema):
+    identificador = f"PAC-{uuid4().hex[:12]}"
+
+    with engine().begin() as connection:
+        paciente_id = criar_paciente(
+            connection,
+            "Paciente Não Fictício",
+            identificador,
+            ativo=1,
+            ficticio=0,
+        )
+
+    try:
+        pacientes = listar_ativos(100, 0)
+
+        ids_encontrados = [paciente["id"] for paciente in pacientes]
+
+        assert paciente_id not in ids_encontrados
+
+    finally:
+        with engine().begin() as connection:
+            connection.execute(
+                text("""
+                    DELETE FROM cadastro__pacientes
+                    WHERE id = :id
+                """),
+                {"id": paciente_id},
             )
 
 
@@ -153,23 +226,11 @@ def test_listar_ativos_ordenacao(mysql_url, application_schema):
 
     with engine().begin() as connection:
         # Inserção propositalmente fora da ordem alfabética.
-        pacientes_criados.append(
-            criar_paciente(
-                connection, "Carlos", f"{prefixo}-003"
-            )
-        )
+        pacientes_criados.append(criar_paciente(connection, "Carlos", f"{prefixo}-003"))
 
-        pacientes_criados.append(
-            criar_paciente(
-                connection, "Ana", f"{prefixo}-001"
-            )
-        )
+        pacientes_criados.append(criar_paciente(connection, "Ana", f"{prefixo}-001"))
 
-        pacientes_criados.append(
-            criar_paciente(
-                connection, "Bruno", f"{prefixo}-002"
-            )
-        )
+        pacientes_criados.append(criar_paciente(connection, "Bruno", f"{prefixo}-002"))
 
     try:
         pacientes = listar_ativos(10, 0)
@@ -178,15 +239,10 @@ def test_listar_ativos_ordenacao(mysql_url, application_schema):
         ids_criados = set(pacientes_criados)
 
         pacientes_teste = [
-            paciente
-            for paciente in pacientes
-            if paciente["id"] in ids_criados
+            paciente for paciente in pacientes if paciente["id"] in ids_criados
         ]
 
-        nomes = [
-            paciente["nome"]
-            for paciente in pacientes_teste
-        ]
+        nomes = [paciente["nome"] for paciente in pacientes_teste]
 
         assert nomes == ["Ana", "Bruno", "Carlos"]
 
@@ -197,8 +253,160 @@ def test_listar_ativos_ordenacao(mysql_url, application_schema):
                     DELETE FROM cadastro__pacientes
                     WHERE id = :id
                 """),
-                [
-                    {"id": paciente_id}
-                    for paciente_id in pacientes_criados
-                ]
+                [{"id": paciente_id} for paciente_id in pacientes_criados],
+            )
+
+
+def test_listar_ativos_paginacao(mysql_url, application_schema):
+    prefixo = f"PAC-{uuid4().hex[:8]}"
+    ids_criados = []
+
+    with engine().begin() as connection:
+        ids_criados.append(criar_paciente(connection, "AAA Pagina A", f"{prefixo}-001"))
+        ids_criados.append(criar_paciente(connection, "AAA Pagina B", f"{prefixo}-002"))
+        ids_criados.append(criar_paciente(connection, "AAA Pagina C", f"{prefixo}-003"))
+
+    try:
+        todos = listar_ativos(100, 0)
+
+        ids_ordenados = [
+            paciente["id"] for paciente in todos if paciente["id"] in ids_criados
+        ]
+
+        assert len(ids_ordenados) == 3
+
+        primeira_posicao = next(
+            i for i, paciente in enumerate(todos) if paciente["id"] == ids_ordenados[0]
+        )
+
+        primeira_pagina = listar_ativos(2, primeira_posicao)
+        segunda_pagina = listar_ativos(2, primeira_posicao + 2)
+
+        ids_primeira = [p["id"] for p in primeira_pagina if p["id"] in ids_criados]
+        ids_segunda = [p["id"] for p in segunda_pagina if p["id"] in ids_criados]
+
+        assert ids_primeira == ids_ordenados[:2]
+        assert ids_segunda == ids_ordenados[2:]
+        assert set(ids_primeira).isdisjoint(ids_segunda)
+
+    finally:
+        with engine().begin() as connection:
+            connection.execute(
+                text("DELETE FROM cadastro__pacientes WHERE id = :id"),
+                [{"id": paciente_id} for paciente_id in ids_criados],
+            )
+
+
+def test_listar_ativos_nomes_iguais(mysql_url, application_schema):
+    prefixo = f"PAC-{uuid4().hex[:8]}"
+
+    id_1 = "00000000-0000-4000-8000-000000000001"
+    id_2 = "00000000-0000-4000-8000-000000000002"
+
+    ids = [id_1, id_2]
+
+    try:
+        with engine().begin() as connection:
+            for paciente_id, identificador in zip(
+                ids, [f"{prefixo}-001", f"{prefixo}-002"], strict=True
+            ):
+                connection.execute(
+                    text("""
+                        INSERT INTO cadastro__pacientes
+                            (id, identificador, nome, ativo, ficticio)
+                        VALUES
+                            (:id, :identificador, :nome, 1, 1)
+                    """),
+                    {
+                        "id": paciente_id,
+                        "identificador": identificador,
+                        "nome": "Paciente Mesmo Nome",
+                    },
+                )
+
+        pacientes = listar_ativos(100, 0)
+
+        encontrados = [p["id"] for p in pacientes if p["id"] in ids]
+
+        assert encontrados == sorted(ids)
+
+    finally:
+        with engine().begin() as connection:
+            connection.execute(
+                text("DELETE FROM cadastro__pacientes WHERE id = :id"),
+                [{"id": paciente_id} for paciente_id in ids],
+            )
+
+
+@pytest.mark.parametrize(
+    "limite, deslocamento",
+    [
+        (None, 0),
+        (-1, 0),
+        (1.5, 0),
+        (True, 0),
+        (101, 0),
+        (20, None),
+        (20, -1),
+        (20, 1.5),
+        (20, True),
+        (20, 100001),
+    ],
+)
+def test_listar_ativos_parametros_invalidos(limite, deslocamento):
+    with pytest.raises(ValueError):
+        listar_ativos(limite, deslocamento)
+
+
+def test_buscar_por_nome(mysql_url, application_schema):
+    prefixo = f"PAC-{uuid4().hex[:12]}"
+
+    with engine().begin() as connection:
+        paciente_id = criar_paciente(
+            connection,
+            "Gabriel Silva",
+            prefixo,
+        )
+
+    try:
+        pacientes = buscar_por_nome("Gabriel")
+
+        encontrados = [
+            paciente for paciente in pacientes if paciente["id"] == paciente_id
+        ]
+
+        assert len(encontrados) == 1
+        assert encontrados[0]["nome"] == "Gabriel Silva"
+
+    finally:
+        with engine().begin() as connection:
+            connection.execute(
+                text("DELETE FROM cadastro__pacientes WHERE id = :id"),
+                {"id": paciente_id},
+            )
+
+
+def test_buscar_por_nome_ignora_nao_ficticio(mysql_url, application_schema):
+    identificador = f"PAC-{uuid4().hex[:12]}"
+
+    with engine().begin() as connection:
+        paciente_id = criar_paciente(
+            connection,
+            "Gabriel Não Fictício",
+            identificador,
+            ficticio=0,
+        )
+
+    try:
+        pacientes = buscar_por_nome("Gabriel Não Fictício")
+
+        ids_encontrados = [paciente["id"] for paciente in pacientes]
+
+        assert paciente_id not in ids_encontrados
+
+    finally:
+        with engine().begin() as connection:
+            connection.execute(
+                text("DELETE FROM cadastro__pacientes WHERE id = :id"),
+                {"id": paciente_id},
             )
