@@ -50,13 +50,14 @@ def listar_ativas(limite, deslocamento=0):
     _validar_paginacao(limite, deslocamento)
 
     with engine().connect() as connection:
-        rows = connection.execute(
-            text(
-                SELECT_UNIDADES_ATIVAS
-                + """
-                ORDER BY nome, id
-                LIMIT :limite OFFSET :deslocamento
-                """
+        rows = (
+            connection.execute(
+                text(
+                    SELECT_UNIDADES_ATIVAS
+                    + """
+                    ORDER BY nome, id
+                    LIMIT :limite OFFSET :deslocamento
+                    """
                 ),
                 {"limite": limite, "deslocamento": deslocamento},
             )

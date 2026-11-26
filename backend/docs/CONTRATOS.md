@@ -76,6 +76,26 @@ O JSON paginado contém:
 
 Não calcule `total` sobre dados de outros usuários ou organizações. Página vazia, inclusive com offset além do total, é sucesso 200 com `items=[]`. O contrato recusa total negativo, mais itens que o limite e itens posicionados além do total informado.
 
+## Unidades
+
+As rotas abaixo são habilitadas em desenvolvimento e testes. Não exigem autenticação nesta etapa; a integração com a autenticação pertence à Prioridade 5.
+
+| Método e caminho | Entrada | Sucesso | Respostas de erro documentadas |
+| --- | --- | --- | --- |
+| `POST /api/v1/unidades` | JSON `codigo` (até 30), `nome` (até 120), `tipo` (até 40); campos extras recusados | 201, objeto criado | 409 código duplicado; 422 entrada inválida |
+| `GET /api/v1/unidades` | Query `limit` e `offset` | 200, página de unidades ativas | 422 paginação inválida |
+| `GET /api/v1/unidades/{id}` | `id` UUID | 200, objeto consultado | 404 não encontrada; 422 UUID inválido |
+| `PATCH /api/v1/unidades/{id}` | JSON parcial com `nome` e/ou `tipo`; campos extras recusados | 200, objeto atualizado | 404 não encontrada; 422 entrada inválida |
+| `DELETE /api/v1/unidades/{id}` | `id` UUID | 204, sem corpo; mantém o registro com `ativo=0` | 404 não encontrada; 422 UUID inválido |
+
+Exemplo de criação:
+
+```json
+{"codigo":"UN-TESTE-01","nome":"Unidade Escola","tipo":"ensino"}
+```
+
+O código é único. A listagem conta e retorna somente unidades ativas, ordenadas por `nome, id`. PATCH preserva `id` e `codigo`; como `nome` e `tipo` não são anuláveis no DDL, `null` explícito é recusado.
+
 ### Busca literal do catálogo de medicamentos
 
 Quando o catálogo de medicamentos for exposto por uma listagem HTTP, o filtro opcional `nome` deve ser uma substring literal. Os caracteres `%`, `_` e `!` não são tratados como sintaxe especial pelo usuário: a busca procura o caractere correspondente no nome cadastrado.
