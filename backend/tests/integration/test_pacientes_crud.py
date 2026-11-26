@@ -1,4 +1,3 @@
-
 from uuid import uuid4
 
 import pytest
@@ -7,10 +6,10 @@ from sqlalchemy.exc import IntegrityError
 
 from prontuario_backend.config.database import engine
 from prontuario_backend.models.pacientes import (
-    criar,
+    atualizar,
     buscar_por_id,
     buscar_por_identificador,
-    atualizar,
+    criar,
     desativar,
     listar_ativos,
 )
@@ -53,9 +52,7 @@ def test_criar_paciente(mysql_url, application_schema):
                 )
 
 
-def test_criar_paciente_com_campos_opcionais_nulos(
-    mysql_url, application_schema
-):
+def test_criar_paciente_com_campos_opcionais_nulos(mysql_url, application_schema):
     dados = novo_paciente(
         nascimento=None,
         sexo=None,
@@ -80,9 +77,7 @@ def test_criar_paciente_com_campos_opcionais_nulos(
                 )
 
 
-def test_criar_paciente_com_identificador_duplicado(
-    mysql_url, application_schema
-):
+def test_criar_paciente_com_identificador_duplicado(mysql_url, application_schema):
     dados = novo_paciente()
 
     try:
@@ -129,17 +124,13 @@ def test_buscar_paciente_criado_por_id(mysql_url, application_schema):
                 )
 
 
-def test_buscar_paciente_por_identificador(
-    mysql_url, application_schema
-):
+def test_buscar_paciente_por_identificador(mysql_url, application_schema):
     dados = novo_paciente()
 
     try:
         criado = criar(dados)
 
-        resultado = buscar_por_identificador(
-            dados["identificador"]
-        )
+        resultado = buscar_por_identificador(dados["identificador"])
 
         assert resultado is not None
         assert resultado["id"] == criado["id"]
@@ -193,9 +184,7 @@ def test_atualizar_paciente(mysql_url, application_schema):
                 )
 
 
-def test_atualizar_paciente_com_id_inexistente(
-    mysql_url, application_schema
-):
+def test_atualizar_paciente_com_id_inexistente(mysql_url, application_schema):
     resultado = atualizar(
         str(uuid4()),
         {
@@ -219,14 +208,18 @@ def test_desativar_paciente(mysql_url, application_schema):
         assert resultado is True
 
         with engine().connect() as connection:
-            paciente = connection.execute(
-                text("""
+            paciente = (
+                connection.execute(
+                    text("""
                     SELECT ativo
                     FROM cadastro__pacientes
                     WHERE id = :id
                 """),
-                {"id": criado["id"]},
-            ).mappings().first()
+                    {"id": criado["id"]},
+                )
+                .mappings()
+                .first()
+            )
 
         assert paciente is not None
         assert paciente["ativo"] == 0
@@ -243,17 +236,13 @@ def test_desativar_paciente(mysql_url, application_schema):
                 )
 
 
-def test_desativar_paciente_com_id_inexistente(
-    mysql_url, application_schema
-):
+def test_desativar_paciente_com_id_inexistente(mysql_url, application_schema):
     resultado = desativar(str(uuid4()))
 
     assert resultado is False
 
 
-def test_paciente_inativo_fora_da_listagem(
-    mysql_url, application_schema
-):
+def test_paciente_inativo_fora_da_listagem(mysql_url, application_schema):
     dados = novo_paciente()
 
     try:
