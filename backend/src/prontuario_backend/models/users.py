@@ -4,6 +4,44 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import text
 
+from prontuario_backend.config.database import engine
+
+
+def buscar_cadastro_por_id(id):
+    query = text("""
+        SELECT id, nome, login, email, ativo
+        FROM cadastro__usuarios
+        WHERE id = :id
+    """)
+
+    with engine().connect() as connection:
+        cadastro = connection.execute(query, {"id": id}).mappings().one_or_none()
+
+    return dict(cadastro) if cadastro else None
+
+
+def listar_cadastros(limite, deslocamento, ativo=None):
+    query = """
+        SELECT id, nome, login, email, ativo
+        FROM cadastro__usuarios
+    """
+
+    parametros = {
+        "limite": limite,
+        "deslocamento": deslocamento,
+    }
+
+    if ativo is not None:
+        query += " WHERE ativo = :ativo"
+        parametros["ativo"] = ativo
+
+    query += " ORDER BY login, id LIMIT :limite OFFSET :deslocamento"
+
+    with engine().connect() as connection:
+        cadastros = connection.execute(text(query), parametros).mappings().all()
+
+    return [dict(cadastro) for cadastro in cadastros]
+
 
 def system_admin(connection, subject):
     if not isinstance(subject, str):
