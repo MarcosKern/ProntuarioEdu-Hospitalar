@@ -1,6 +1,6 @@
 # Python 3.12.16 on Alpine 3.23, pinned to the verified upstream manifest.
 # Refresh the digest regularly and scan the complete image before merging.
-FROM python:3.12-alpine3.23@sha256:9a7b46da82fe49a9118e0aa7e35ac3b831aa53ad4f4ebf3e16654732bc958a62
+FROM python:3.15-alpine3.23@sha256:32f06114a111c2467804d06194c5584f16804a78cfaf427fb1fcbb0b3391d0f1
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/src
 WORKDIR /app
 # Correção publicada no Alpine 3.23-stable; o build falha se o pacote não puder ser instalado.
