@@ -1,7 +1,7 @@
-from sqlalchemy import text
 from datetime import date
 from uuid import uuid4
 
+from sqlalchemy import text
 
 from prontuario_backend.config.database import engine
 
@@ -117,7 +117,7 @@ def _normalizar_nascimento(valor):
     try:
         return date.fromisoformat(valor)
     except (TypeError, ValueError):
-        raise ValueError("Nascimento deve estar no formato YYYY-MM-DD.")
+        raise ValueError("Nascimento deve estar no formato YYYY-MM-DD.") from None
 
 
 def criar(dados):
