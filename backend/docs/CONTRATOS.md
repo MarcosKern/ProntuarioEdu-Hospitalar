@@ -96,6 +96,26 @@ Exemplo de criação:
 
 O código é único. A listagem conta e retorna somente unidades ativas, ordenadas por `nome, id`. PATCH preserva `id` e `codigo`; como `nome` e `tipo` não são anuláveis no DDL, `null` explícito é recusado.
 
+## Contextos assistenciais
+
+As rotas abaixo são habilitadas em desenvolvimento e testes. Não exigem autenticação nesta etapa; a integração com a autenticação pertence à Prioridade 5.
+
+| Método e caminho | Entrada | Sucesso | Respostas de erro documentadas |
+| --- | --- | --- | --- |
+| `POST /api/v1/contextos-assistenciais` | JSON `codigo` (até 45), `nome` (até 120), `tipo_atendimento` (até 30) e `nivel_cuidado` opcional (até 50); campos extras recusados | 201, objeto criado | 409 código duplicado; 422 entrada inválida |
+| `GET /api/v1/contextos-assistenciais` | Query `limit` e `offset` | 200, página de contextos ativos | 422 paginação inválida |
+| `GET /api/v1/contextos-assistenciais/{id}` | `id` UUID | 200, objeto consultado | 404 não encontrado; 422 UUID inválido |
+| `PATCH /api/v1/contextos-assistenciais/{id}` | JSON parcial com `nome`, `tipo_atendimento` e/ou `nivel_cuidado`; campos extras recusados | 200, objeto atualizado | 404 não encontrado; 422 entrada inválida |
+| `DELETE /api/v1/contextos-assistenciais/{id}` | `id` UUID | 204, sem corpo; mantém o registro com `ativo=0` | 404 não encontrado; 422 UUID inválido |
+
+Exemplo de criação:
+
+```json
+{"codigo":"CTX-TESTE-01","nome":"Consulta simulada","tipo_atendimento":"consulta"}
+```
+
+O código é único. A listagem conta e retorna somente contextos ativos, ordenados por `nome, id`. PATCH preserva `id` e `codigo`; `nivel_cuidado` aceita `null` explícito para limpar o campo.
+
 ## Testes e acompanhamento
 
 Os testes unitários verificam os DTOs e os limites. Os testes de contrato usam requisições HTTP reais contra a aplicação em memória, com rotas temporárias exclusivas dos testes para paginação; não abrem banco nem criam dados na aplicação. A regressão do login é validada separadamente com MySQL descartável. Evidências e autorizações estão na [etapa 3 do F01](../../docs/historico/F01.md).

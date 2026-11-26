@@ -54,6 +54,30 @@ def listar_ativos(limite, deslocamento=0):
     return [dict(row) for row in rows]
 
 
+def listar_ativos_paginados(limite, deslocamento=0):
+    _validar_paginacao(limite, deslocamento)
+
+    with engine().connect() as connection, connection.begin():
+        total = connection.execute(
+            text(
+                "SELECT COUNT(*) FROM assistencial__contextos_assistenciais "
+                "WHERE ativo = 1"
+            )
+        ).scalar_one()
+        rows = connection.execute(
+            text(
+                SELECT_CONTEXTO
+                + """
+                WHERE ativo = 1
+                ORDER BY nome, id
+                LIMIT :limite OFFSET :deslocamento
+                """
+            ),
+            {"limite": limite, "deslocamento": deslocamento},
+        ).mappings().all()
+    return [dict(row) for row in rows], total
+
+
 def criar(dados):
     contexto_id = str(uuid4())
     with engine().begin() as connection:
