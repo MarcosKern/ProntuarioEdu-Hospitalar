@@ -8,6 +8,8 @@ SELECT_UNIDADE = """
 SELECT id, codigo, nome, tipo, ativo, criado_em
 FROM cadastro__unidades
 """
+WHERE_UNIDADES_ATIVAS = " WHERE ativo = 1"
+SELECT_UNIDADES_ATIVAS = SELECT_UNIDADE + WHERE_UNIDADES_ATIVAS
 
 
 def _buscar_por_id(connection, unidade_id):
@@ -45,22 +47,13 @@ def buscar_por_codigo(codigo):
 
 
 def listar_ativas(limite, deslocamento=0):
-    if isinstance(limite, bool) or not isinstance(limite, int) or limite < 0:
-        raise ValueError("Limite da listagem deve ser um inteiro não negativo")
-    if (
-        isinstance(deslocamento, bool)
-        or not isinstance(deslocamento, int)
-        or deslocamento < 0
-    ):
-        raise ValueError("Deslocamento da listagem deve ser um inteiro não negativo")
+    _validar_paginacao(limite, deslocamento)
 
     with engine().connect() as connection:
-        rows = (
-            connection.execute(
-                text(
-                    SELECT_UNIDADE
-                    + """
-                WHERE ativo = 1
+        rows = connection.execute(
+            text(
+                SELECT_UNIDADES_ATIVAS
+                + """
                 ORDER BY nome, id
                 LIMIT :limite OFFSET :deslocamento
                 """
@@ -71,6 +64,37 @@ def listar_ativas(limite, deslocamento=0):
             .all()
         )
     return [dict(row) for row in rows]
+
+
+def listar_ativas_paginadas(limite, deslocamento=0):
+    _validar_paginacao(limite, deslocamento)
+
+    with engine().connect() as connection, connection.begin():
+        total = connection.execute(
+            text("SELECT COUNT(*) FROM cadastro__unidades" + WHERE_UNIDADES_ATIVAS)
+        ).scalar_one()
+        rows = connection.execute(
+            text(
+                SELECT_UNIDADES_ATIVAS
+                + """
+                ORDER BY nome, id
+                LIMIT :limite OFFSET :deslocamento
+                """
+            ),
+            {"limite": limite, "deslocamento": deslocamento},
+        ).mappings().all()
+    return [dict(row) for row in rows], total
+
+
+def _validar_paginacao(limite, deslocamento):
+    if isinstance(limite, bool) or not isinstance(limite, int) or limite < 0:
+        raise ValueError("Limite da listagem deve ser um inteiro não negativo")
+    if (
+        isinstance(deslocamento, bool)
+        or not isinstance(deslocamento, int)
+        or deslocamento < 0
+    ):
+        raise ValueError("Deslocamento da listagem deve ser um inteiro não negativo")
 
 
 def criar(dados):
@@ -96,22 +120,19 @@ def criar(dados):
 def atualizar(unidade_id, dados):
     if not isinstance(unidade_id, str) or not unidade_id:
         return None
+    campos = {"nome", "tipo"}
+    if not dados or not set(dados).issubset(campos):
+        raise ValueError("Atualização deve conter nome e/ou tipo")
+
     with engine().begin() as connection:
         if _buscar_por_id(connection, unidade_id) is None:
             return None
+        assignments = ", ".join(f"{field} = :{field}" for field in dados)
+        parameters = dict(dados)
+        parameters["id"] = unidade_id
         connection.execute(
-            text(
-                """
-                UPDATE cadastro__unidades
-                SET nome = :nome, tipo = :tipo
-                WHERE id = :id
-                """
-            ),
-            {
-                "id": unidade_id,
-                "nome": dados["nome"],
-                "tipo": dados["tipo"],
-            },
+            text(f"UPDATE cadastro__unidades SET {assignments} WHERE id = :id"),
+            parameters,
         )
         return _buscar_por_id(connection, unidade_id)
 

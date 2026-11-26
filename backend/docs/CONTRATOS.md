@@ -64,7 +64,7 @@ O contrato reutilizável está em [`views/pagination.py`](../src/prontuario_back
 
 Valores fora dos limites recebem 422. A quantidade por página e o teto de offset limitam o custo das consultas; pesquisas muito profundas devem ser reduzidas por filtros do fluxo. Novos filtros devem ser declarados no DTO de query da listagem, que pode estender `PaginationParams`; parâmetros desconhecidos não são ignorados.
 
-Use `Annotated[PaginationParams, Query()]` na entrada e `PageResponse[ItemResponse]` como `response_model`. `ItemResponse` deve ser a View dos campos públicos do recurso, não um dicionário livre nem uma entidade ORM. O parâmetro de tipo indica quais campos cada item pode conter. Nenhum endpoint de listagem foi criado nesta etapa.
+Use `Annotated[PaginationParams, Query()]` na entrada e `PageResponse[ItemResponse]` como `response_model`. `ItemResponse` deve ser a View dos campos públicos do recurso, não um dicionário livre nem uma entidade ORM. O parâmetro de tipo indica quais campos cada item pode conter. A listagem de unidades é a primeira aplicação desse contrato.
 
 O JSON paginado contém:
 
