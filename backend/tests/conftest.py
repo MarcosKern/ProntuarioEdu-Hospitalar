@@ -70,6 +70,7 @@ TABLES = [
     "cadastro__perfil_permissao",
     "cadastro__usuario_perfil",
     "cadastro__sessoes_usuario",
+    "cadastro__pacientes",
 ]
 
 
