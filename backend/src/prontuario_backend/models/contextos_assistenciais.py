@@ -27,7 +27,6 @@ def buscar_por_id(contexto_id):
             {"id": contexto_id},
         ).mappings().one_or_none()
     return dict(row) if row else None
-        return _buscar_por_id(connection, contexto_id)
 
 
 def buscar_por_codigo(codigo):

@@ -3,8 +3,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from uuid import uuid4
-
 from sqlalchemy import text
 
 from prontuario_backend.config.database import engine
