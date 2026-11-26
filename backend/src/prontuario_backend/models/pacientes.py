@@ -131,9 +131,7 @@ def criar(dados):
         "id": paciente_id,
         "identificador": dados["identificador"],
         "nome": dados["nome"],
-        "nascimento": _normalizar_nascimento(
-            dados.get("nascimento")
-        ),
+        "nascimento": _normalizar_nascimento(dados.get("nascimento")),
         "sexo": dados.get("sexo") or None,
     }
 
@@ -157,11 +155,12 @@ def criar(dados):
                     1
                 )
             """),
-            parametros
+            parametros,
         )
 
-        resultado = sql.execute(
-            text("""
+        resultado = (
+            sql.execute(
+                text("""
                 SELECT
                     id,
                     identificador,
@@ -175,8 +174,11 @@ def criar(dados):
                 WHERE id = :id
                   AND ficticio = 1
             """),
-            {"id": paciente_id}
-        ).mappings().first()
+                {"id": paciente_id},
+            )
+            .mappings()
+            .first()
+        )
 
         return dict(resultado) if resultado else None
 
@@ -190,9 +192,7 @@ def atualizar(id, dados):
     parametros = {
         "id": id,
         "nome": dados["nome"],
-        "nascimento": _normalizar_nascimento(
-            dados.get("nascimento")
-        ),
+        "nascimento": _normalizar_nascimento(dados.get("nascimento")),
         "sexo": dados.get("sexo") or None,
     }
 
@@ -207,14 +207,15 @@ def atualizar(id, dados):
                 WHERE id = :id
                   AND ficticio = 1
             """),
-            parametros
+            parametros,
         )
 
         if resultado.rowcount == 0:
             return None
 
-        paciente = sql.execute(
-            text("""
+        paciente = (
+            sql.execute(
+                text("""
                 SELECT
                     id,
                     identificador,
@@ -228,8 +229,11 @@ def atualizar(id, dados):
                 WHERE id = :id
                   AND ficticio = 1
             """),
-            {"id": id}
-        ).mappings().first()
+                {"id": id},
+            )
+            .mappings()
+            .first()
+        )
 
         return dict(paciente) if paciente else None
 
@@ -248,7 +252,7 @@ def desativar(id):
                 WHERE id = :id
                   AND ficticio = 1
             """),
-            {"id": id}
+            {"id": id},
         )
 
         return resultado.rowcount > 0
