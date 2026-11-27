@@ -57,6 +57,7 @@ def create_app():
     if not production:
         app.include_router(medicamentos_router)
         app.include_router(unidades_router)
+        app.include_router(contextos_assistenciais_router)
 
         @app.get("/metrics", include_in_schema=False)
         def metrics():

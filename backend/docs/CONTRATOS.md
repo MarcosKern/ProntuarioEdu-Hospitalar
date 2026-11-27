@@ -111,6 +111,17 @@ As rotas do catálogo são habilitadas somente em desenvolvimento e testes. Não
 O POST aceita `principio_ativo` e `nome_comercial` até 160 caracteres, `forma_farmaceutica` até 80 e `descricao` textual; esses mesmos campos podem ser enviados no PATCH. `nome` não aceita `null` no PATCH, enquanto os campos opcionais podem ser explicitamente limpos com `null`. Campos desconhecidos são recusados. Nomes iguais são permitidos.
 
 A listagem inclui somente registros ativos, ordena por `nome, id` e aplica o mesmo filtro à contagem e aos itens. `nome` procura uma substring literal, incluindo os caracteres `%`, `_` e `!`, conforme a [decisão registrada na ADR 0011](../../docs/adr/0011-catalogo-medicamentos.md).
+## Contextos assistenciais
+
+As rotas abaixo são habilitadas em desenvolvimento e testes. Não exigem autenticação nesta etapa; a integração com a autenticação pertence à Prioridade 5.
+
+| Método e caminho | Entrada | Sucesso | Respostas de erro documentadas |
+| --- | --- | --- | --- |
+| `POST /api/v1/contextos-assistenciais` | JSON `codigo` (até 45), `nome` (até 120), `tipo_atendimento` (até 30) e `nivel_cuidado` opcional (até 50); campos extras recusados | 201, objeto criado | 409 código duplicado; 422 entrada inválida |
+| `GET /api/v1/contextos-assistenciais` | Query `limit` e `offset` | 200, página de contextos ativos | 422 paginação inválida |
+| `GET /api/v1/contextos-assistenciais/{id}` | `id` UUID | 200, objeto consultado | 404 não encontrado; 422 UUID inválido |
+| `PATCH /api/v1/contextos-assistenciais/{id}` | JSON parcial com `nome`, `tipo_atendimento` e/ou `nivel_cuidado`; campos extras recusados | 200, objeto atualizado | 404 não encontrado; 422 entrada inválida |
+| `DELETE /api/v1/contextos-assistenciais/{id}` | `id` UUID | 204, sem corpo; mantém o registro com `ativo=0` | 404 não encontrado; 422 UUID inválido |
 
 Exemplo de criação:
 
@@ -125,6 +136,10 @@ Quando o catálogo de medicamentos for exposto por uma listagem HTTP, o filtro o
 `nome` não cria pesquisa por expressões ou curingas SQL. O espaço em branco não é removido automaticamente e não há correção ortográfica, normalização fonética ou ranking por relevância. O limite e o offset seguem a política desta página.
 
 As rotas de desenvolvimento e testes aplicam esse contrato com DTO de consulta, View de resposta, contagem filtrada e erros OpenAPI documentados. O Model usa `LIKE` com escapador explícito e vincula o termo como parâmetro. Antes da exposição em produção, ainda é necessária a integração com autenticação e autorização prevista para a Prioridade 5. A decisão da busca literal está registrada na [ADR 0011](../../docs/adr/0011-catalogo-medicamentos.md).
+{"codigo":"CTX-TESTE-01","nome":"Consulta simulada","tipo_atendimento":"consulta"}
+```
+
+O código é único. A listagem conta e retorna somente contextos ativos, ordenados por `nome, id`. PATCH preserva `id` e `codigo`; `nivel_cuidado` aceita `null` explícito para limpar o campo.
 
 ## Testes e acompanhamento
 

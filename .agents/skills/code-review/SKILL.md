@@ -27,7 +27,7 @@ When the PR satisfies the card and relevant checks pass, submit an approving Cod
 
 ## Request reviews from repository members
 
-Use GitHub's reviewer-request mechanism on the identified PR. Determine candidate reviewers from repository collaborators, CODEOWNERS, the card's assigned members, and existing PR context. Request a small, relevant set of available human reviewers, excluding the PR author and anyone already requested. If no suitable member can be identified or the integration cannot request them, state that limitation clearly.
+Use GitHub's reviewer-request mechanism on the identified PR and request validation from every repository collaborator. Enumerate the complete collaborator roster (including pagination) from GitHub's collaborator API or another authoritative source; do not narrow the request to a small or preferred set. Exclude the PR author and the authenticated account when GitHub does not permit self-requests. Do not request collaborators whose review is already submitted or pending on that PR. If the roster exceeds GitHub's reviewer-request limit, request as many as the platform permits and clearly list those who could not be requested. If the roster cannot be obtained, state that limitation instead of implying everyone was requested.
 
 Requesting human reviews does not count as receiving human approvals. Never merge unless repository policy is satisfied, including the required number of valid human approvals, completed Codex review, passing required checks, and any required architecture review. Do not use email, chat, or another messaging channel to solicit reviews unless the user explicitly asks for that channel.
 

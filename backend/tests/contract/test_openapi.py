@@ -65,6 +65,32 @@ OPERATIONS = {
     ),
     ("/api/v1/medicamentos/{id}", "delete"): (
         "desativar_medicamento",
+    ("/api/v1/contextos-assistenciais", "post"): (
+        "criar_contexto_assistencial",
+        "ContextoAssistencialResponse",
+        201,
+        None,
+    ),
+    ("/api/v1/contextos-assistenciais", "get"): (
+        "listar_contextos_assistenciais",
+        "PageResponse_ContextoAssistencialResponse_",
+        200,
+        None,
+    ),
+    ("/api/v1/contextos-assistenciais/{id}", "get"): (
+        "buscar_contexto_assistencial",
+        "ContextoAssistencialResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/contextos-assistenciais/{id}", "patch"): (
+        "atualizar_contexto_assistencial",
+        "ContextoAssistencialResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/contextos-assistenciais/{id}", "delete"): (
+        "desativar_contexto_assistencial",
         None,
         204,
         None,
