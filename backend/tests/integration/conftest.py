@@ -49,6 +49,66 @@ def unidades(application_schema):
 
 
 @pytest.fixture
+def leitos(application_schema, unidades):
+    backend = Path(__file__).resolve().parents[2]
+    source = (backend / "docs/database/prontuarioedu_mysql.sql").read_text()
+    table = "cadastro__leitos"
+    ddl = re.search(r"CREATE TABLE `" + table + r"` \(.*?;", source, re.S)
+    assert ddl
+    rows = [
+        {
+            "id": str(uuid4()),
+            "unidade_id": unidades[0]["id"],
+            "codigo": "B-02",
+            "situacao": "ocupado",
+        },
+        {
+            "id": str(uuid4()),
+            "unidade_id": unidades[0]["id"],
+            "codigo": "A-01",
+            "situacao": "disponivel",
+        },
+        {
+            "id": str(uuid4()),
+            "unidade_id": unidades[1]["id"],
+            "codigo": "A-01",
+            "situacao": "higienizacao",
+        },
+    ]
+    db = engine()
+
+    try:
+        with db.begin() as connection:
+            connection.execute(text(ddl.group()))
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE `cadastro__leitos`
+                    ADD CONSTRAINT `fk_cadastro_leitos_test`
+                    FOREIGN KEY (unidade_id)
+                    REFERENCES `cadastro__unidades`(id)
+                    ON DELETE RESTRICT
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO cadastro__leitos
+                        (id, unidade_id, codigo, situacao)
+                    VALUES
+                        (:id, :unidade_id, :codigo, :situacao)
+                    """
+                ),
+                rows,
+            )
+        yield rows
+    finally:
+        with db.begin() as connection:
+            connection.execute(text("DROP TABLE IF EXISTS cadastro__leitos"))
+
+
+@pytest.fixture
 def contextos_assistenciais(mysql_url):
     backend = Path(__file__).resolve().parents[2]
     source = (backend / "docs/database/prontuarioedu_mysql.sql").read_text()
