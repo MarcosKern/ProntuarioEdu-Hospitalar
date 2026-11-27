@@ -24,13 +24,20 @@
   ],
   "waitFor": "postCreateCommand",
   "forwardPorts": [
-    8000
+    8000,
+    8001
   ],
   "portsAttributes": {
     "8000": {
       "label": "ProntuarioEdu API / Swagger",
       "protocol": "http",
       "onAutoForward": "notify"
+    },
+    "8001": {
+      "label": "ProntuarioEdu API de testes / Swagger",
+      "protocol": "http",
+      "onAutoForward": "notify",
+      "visibility": "private"
     }
   },
   "customizations": {

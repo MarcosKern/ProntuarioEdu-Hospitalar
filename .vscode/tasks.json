@@ -10,11 +10,22 @@
       "problemMatcher": []
     },
     {
+      "label": "Codespaces: iniciar stack de testes",
+      "type": "process",
+      "command": "${workspaceFolder}/backend/.venv/bin/python",
+      "args": ["-m", "dotenv", "-f", ".env.test", "run", "--", "${workspaceFolder}/backend/.venv/bin/python", "scripts/test_env.py"],
+      "options": {"cwd": "${workspaceFolder}/backend"},
+      "problemMatcher": []
+    },
+    {
       "label": "Backend: testes",
       "type": "process",
       "command": "${workspaceFolder}/backend/.venv/bin/python",
-      "args": ["-m", "pytest", "-q"],
-      "options": {"cwd": "${workspaceFolder}/backend"},
+      "args": ["-m", "dotenv", "-f", ".env.test", "run", "--", "${workspaceFolder}/backend/.venv/bin/python", "-m", "pytest", "-q"],
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {"MYSQL_SSL_CA": ""}
+      },
       "problemMatcher": [],
       "group": "test"
     },

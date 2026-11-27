@@ -16,6 +16,10 @@ def prepare(root: Path, install=True):
     if not environment.exists():
         shutil.copyfile(backend / ".env.example", environment)
         environment.chmod(0o600)
+    test_environment = backend / ".env.test"
+    if not test_environment.exists():
+        shutil.copyfile(backend / ".env.test.example", test_environment)
+        test_environment.chmod(0o600)
     if not install:
         return
     virtualenv = backend / ".venv"
@@ -42,6 +46,7 @@ def prepare(root: Path, install=True):
     print(
         "Dependências prontas. Configure MySQL e AUTH_JWT_SECRET e use a tarefa Codespaces: iniciar API."
     )
+    print("O ambiente isolado .env.test foi preparado para os testes MySQL.")
     print("Nenhum SQL foi importado e nenhuma migração foi executada.")
 
 
