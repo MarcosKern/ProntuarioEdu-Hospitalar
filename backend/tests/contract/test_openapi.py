@@ -65,6 +65,10 @@ OPERATIONS = {
     ),
     ("/api/v1/medicamentos/{id}", "delete"): (
         "desativar_medicamento",
+        None,
+        204,
+        None,
+    ),
     ("/api/v1/contextos-assistenciais", "post"): (
         "criar_contexto_assistencial",
         "ContextoAssistencialResponse",
