@@ -8,26 +8,122 @@ from prontuario_backend.config.settings import get_settings
 from prontuario_backend.main import create_app
 
 OPERATIONS = {
-    ("/health", "get"): ("check_health", "HealthResponse", None),
+    ("/health", "get"): ("check_health", "HealthResponse", 200, None),
+    ("/api/v1/unidades", "post"): (
+        "criar_unidade",
+        "UnidadeResponse",
+        201,
+        None,
+    ),
+    ("/api/v1/unidades", "get"): (
+        "listar_unidades",
+        "PageResponse_UnidadeResponse_",
+        200,
+        None,
+    ),
+    ("/api/v1/unidades/{id}", "get"): (
+        "buscar_unidade",
+        "UnidadeResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/unidades/{id}", "patch"): (
+        "atualizar_unidade",
+        "UnidadeResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/unidades/{id}", "delete"): (
+        "desativar_unidade",
+        None,
+        204,
+        None,
+    ),
+    ("/api/v1/medicamentos", "post"): (
+        "criar_medicamento",
+        "MedicamentoResponse",
+        201,
+        None,
+    ),
+    ("/api/v1/medicamentos", "get"): (
+        "listar_medicamentos",
+        "PageResponse_MedicamentoResponse_",
+        200,
+        None,
+    ),
+    ("/api/v1/medicamentos/{id}", "get"): (
+        "buscar_medicamento",
+        "MedicamentoResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/medicamentos/{id}", "patch"): (
+        "atualizar_medicamento",
+        "MedicamentoResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/medicamentos/{id}", "delete"): (
+        "desativar_medicamento",
+        None,
+        204,
+        None,
+    ),
+    ("/api/v1/contextos-assistenciais", "post"): (
+        "criar_contexto_assistencial",
+        "ContextoAssistencialResponse",
+        201,
+        None,
+    ),
+    ("/api/v1/contextos-assistenciais", "get"): (
+        "listar_contextos_assistenciais",
+        "PageResponse_ContextoAssistencialResponse_",
+        200,
+        None,
+    ),
+    ("/api/v1/contextos-assistenciais/{id}", "get"): (
+        "buscar_contexto_assistencial",
+        "ContextoAssistencialResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/contextos-assistenciais/{id}", "patch"): (
+        "atualizar_contexto_assistencial",
+        "ContextoAssistencialResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/contextos-assistenciais/{id}", "delete"): (
+        "desativar_contexto_assistencial",
+        None,
+        204,
+        None,
+    ),
     ("/api/v1/me", "get"): (
         "get_current_identity",
         "IdentityResponse",
+        200,
         ["identity:read"],
     ),
     ("/api/v1/auth/session", "get"): (
         "get_session_status",
         "SessionResponse",
+        200,
         ["identity:read"],
     ),
     ("/api/v1/admin/me", "get"): (
         "get_admin_identity",
         "AdministratorResponse",
+        200,
         ["identity:read", "admin:access"],
     ),
-    ("/api/v1/auth/token", "post"): ("login", "TokenResponse", None),
-    ("/api/v1/auth/refresh", "post"): ("refresh_access", "TokenResponse", None),
-    ("/api/v1/auth/logout", "post"): ("logout", None, ["identity:read"]),
-    ("/api/v1/auth/password", "post"): ("change_password", None, ["identity:read"]),
+    ("/api/v1/auth/token", "post"): ("login", "TokenResponse", 200, None),
+    ("/api/v1/auth/refresh", "post"): ("refresh_access", "TokenResponse", 200, None),
+    ("/api/v1/auth/logout", "post"): ("logout", None, 204, ["identity:read"]),
+    (
+        "/api/v1/auth/password",
+        "post",
+    ): ("change_password", None, 204, ["identity:read"]),
 }
 
 
@@ -56,7 +152,7 @@ def test_openapi_covers_public_operations_success_errors_and_scopes(schema):
     }
     assert actual == set(OPERATIONS)
     identifiers = []
-    for (path, method), (identifier, response_model, scopes) in OPERATIONS.items():
+    for (path, method), (identifier, response_model, status, scopes) in OPERATIONS.items():
         operation = schema["paths"][path][method]
         assert operation["operationId"] == identifier
         assert operation["summary"] and operation["description"]
@@ -64,7 +160,7 @@ def test_openapi_covers_public_operations_success_errors_and_scopes(schema):
         assert operation.get("security") == (
             [{"OAuth2PasswordBearer": scopes}, {"BearerToken": []}] if scopes else None
         )
-        success = operation["responses"]["200" if response_model else "204"]
+        success = operation["responses"][str(status)]
         if response_model:
             assert success["content"]["application/json"]["schema"]["$ref"].endswith(
                 "/" + response_model
