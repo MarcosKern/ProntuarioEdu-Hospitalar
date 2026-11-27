@@ -53,9 +53,9 @@ Erros de validação não incluem os valores recebidos. Detalhes HTTP que não s
 
 As respostas processadas pelo middleware incluem `Cache-Control: no-store`. Headers de protocolo são preservados, como `WWW-Authenticate`, `Allow` e `Retry-After`. O envelope é da aplicação: uma rejeição anterior às rotas, pelo gateway, validação do host ou CORS, pode usar a resposta própria dessa camada.
 
-## Paginação para futuras listagens
+## Paginação das listagens
 
-O contrato reutilizável está em [`views/pagination.py`](../src/prontuario_backend/views/pagination.py). Os endpoints atuais de identidade/saúde retornam objetos individuais; futuras listagens deverão adotar essa política.
+O contrato reutilizável está em [`views/pagination.py`](../src/prontuario_backend/views/pagination.py) e já é usado pelas listagens de Unidades e Medicamentos. Os endpoints de identidade/saúde retornam objetos individuais.
 
 | Parâmetro de query | Regra |
 | --- | --- |
@@ -64,7 +64,7 @@ O contrato reutilizável está em [`views/pagination.py`](../src/prontuario_back
 
 Valores fora dos limites recebem 422. A quantidade por página e o teto de offset limitam o custo das consultas; pesquisas muito profundas devem ser reduzidas por filtros do fluxo. Novos filtros devem ser declarados no DTO de query da listagem, que pode estender `PaginationParams`; parâmetros desconhecidos não são ignorados.
 
-Use `Annotated[PaginationParams, Query()]` na entrada e `PageResponse[ItemResponse]` como `response_model`. `ItemResponse` deve ser a View dos campos públicos do recurso, não um dicionário livre nem uma entidade ORM. O parâmetro de tipo indica quais campos cada item pode conter. A listagem de unidades é a primeira aplicação desse contrato.
+Use `Annotated[PaginationParams, Query()]` na entrada e `PageResponse[ItemResponse]` como `response_model`. `ItemResponse` deve ser a View dos campos públicos do recurso, não um dicionário livre nem uma entidade ORM. O parâmetro de tipo indica quais campos cada item pode conter.
 
 O JSON paginado contém:
 
@@ -96,6 +96,21 @@ Exemplo de criação:
 
 O código é único. A listagem conta e retorna somente unidades ativas, ordenadas por `nome, id`. PATCH preserva `id` e `codigo`; como `nome` e `tipo` não são anuláveis no DDL, `null` explícito é recusado.
 
+## Medicamentos
+
+As rotas do catálogo são habilitadas somente em desenvolvimento e testes. Não exigem autenticação nesta etapa; a integração com a autenticação existente pertence à Prioridade 5.
+
+| Método e caminho | Entrada | Sucesso | Respostas de erro documentadas |
+| --- | --- | --- | --- |
+| `POST /api/v1/medicamentos` | JSON com `nome` obrigatório (até 160); demais campos opcionais | 201, objeto criado | 422 entrada inválida |
+| `GET /api/v1/medicamentos` | Query `limit`, `offset` e `nome` opcional | 200, página de medicamentos ativos | 422 paginação inválida |
+| `GET /api/v1/medicamentos/{id}` | `id` UUID | 200, objeto consultado | 404 não encontrado; 422 UUID inválido |
+| `PATCH /api/v1/medicamentos/{id}` | JSON parcial com os campos permitidos | 200, objeto atualizado | 404 não encontrado; 422 entrada inválida |
+| `DELETE /api/v1/medicamentos/{id}` | `id` UUID | 204, sem corpo; mantém o registro com `ativo=0` | 404 não encontrado; 422 UUID inválido |
+
+O POST aceita `principio_ativo` e `nome_comercial` até 160 caracteres, `forma_farmaceutica` até 80 e `descricao` textual; esses mesmos campos podem ser enviados no PATCH. `nome` não aceita `null` no PATCH, enquanto os campos opcionais podem ser explicitamente limpos com `null`. Campos desconhecidos são recusados. Nomes iguais são permitidos.
+
+A listagem inclui somente registros ativos, ordena por `nome, id` e aplica o mesmo filtro à contagem e aos itens. `nome` procura uma substring literal, incluindo os caracteres `%`, `_` e `!`, conforme a [decisão registrada na ADR 0011](../../docs/adr/0011-catalogo-medicamentos.md).
 ## Contextos assistenciais
 
 As rotas abaixo são habilitadas em desenvolvimento e testes. Não exigem autenticação nesta etapa; a integração com a autenticação pertence à Prioridade 5.
@@ -111,6 +126,16 @@ As rotas abaixo são habilitadas em desenvolvimento e testes. Não exigem autent
 Exemplo de criação:
 
 ```json
+{"nome":"Medicamento de demonstração","forma_farmaceutica":"comprimido"}
+```
+
+### Busca literal do catálogo de medicamentos
+
+Quando o catálogo de medicamentos for exposto por uma listagem HTTP, o filtro opcional `nome` deve ser uma substring literal. Os caracteres `%`, `_` e `!` não são tratados como sintaxe especial pelo usuário: a busca procura o caractere correspondente no nome cadastrado.
+
+`nome` não cria pesquisa por expressões ou curingas SQL. O espaço em branco não é removido automaticamente e não há correção ortográfica, normalização fonética ou ranking por relevância. O limite e o offset seguem a política desta página.
+
+As rotas de desenvolvimento e testes aplicam esse contrato com DTO de consulta, View de resposta, contagem filtrada e erros OpenAPI documentados. O Model usa `LIKE` com escapador explícito e vincula o termo como parâmetro. Antes da exposição em produção, ainda é necessária a integração com autenticação e autorização prevista para a Prioridade 5. A decisão da busca literal está registrada na [ADR 0011](../../docs/adr/0011-catalogo-medicamentos.md).
 {"codigo":"CTX-TESTE-01","nome":"Consulta simulada","tipo_atendimento":"consulta"}
 ```
 

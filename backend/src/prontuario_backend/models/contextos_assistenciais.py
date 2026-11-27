@@ -22,7 +22,11 @@ def buscar_por_id(contexto_id):
     if not isinstance(contexto_id, str) or not contexto_id:
         return None
     with engine().connect() as connection:
-        return _buscar_por_id(connection, contexto_id)
+        row = connection.execute(
+            text(SELECT_CONTEXTO + " WHERE id = :id"),
+            {"id": contexto_id},
+        ).mappings().one_or_none()
+    return dict(row) if row else None
 
 
 def buscar_por_codigo(codigo):

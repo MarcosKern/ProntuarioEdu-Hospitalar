@@ -15,6 +15,7 @@ from prontuario_backend.routes.api import router
 from prontuario_backend.routes.contextos_assistenciais import (
     router as contextos_assistenciais_router,
 )
+from prontuario_backend.routes.medicamentos import router as medicamentos_router
 from prontuario_backend.routes.unidades import router as unidades_router
 from prontuario_backend.views.errors import error_body
 
@@ -57,6 +58,7 @@ def create_app():
 
     app.include_router(router)
     if not production:
+        app.include_router(medicamentos_router)
         app.include_router(unidades_router)
         app.include_router(contextos_assistenciais_router)
 

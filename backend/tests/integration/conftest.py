@@ -171,3 +171,22 @@ def contextos_assistenciais(mysql_url):
     finally:
         with db.begin() as connection:
             connection.execute(text(f"DROP TABLE IF EXISTS `{table}`"))
+
+
+@pytest.fixture
+def medicamentos_schema(mysql_url):
+    backend = Path(__file__).resolve().parents[2]
+    source = (backend / "docs/database/prontuarioedu_mysql.sql").read_text()
+    table = "assistencial__medicamentos"
+    ddl = re.search(r"CREATE TABLE `" + table + r"` \(.*?;", source, re.S)
+    assert ddl
+
+    db = engine()
+    with db.begin() as connection:
+        connection.execute(text(f"DROP TABLE IF EXISTS `{table}`"))
+        connection.execute(text(ddl.group()))
+    try:
+        yield db
+    finally:
+        with db.begin() as connection:
+            connection.execute(text(f"DROP TABLE IF EXISTS `{table}`"))

@@ -39,6 +39,36 @@ OPERATIONS = {
         204,
         None,
     ),
+    ("/api/v1/medicamentos", "post"): (
+        "criar_medicamento",
+        "MedicamentoResponse",
+        201,
+        None,
+    ),
+    ("/api/v1/medicamentos", "get"): (
+        "listar_medicamentos",
+        "PageResponse_MedicamentoResponse_",
+        200,
+        None,
+    ),
+    ("/api/v1/medicamentos/{id}", "get"): (
+        "buscar_medicamento",
+        "MedicamentoResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/medicamentos/{id}", "patch"): (
+        "atualizar_medicamento",
+        "MedicamentoResponse",
+        200,
+        None,
+    ),
+    ("/api/v1/medicamentos/{id}", "delete"): (
+        "desativar_medicamento",
+        None,
+        204,
+        None,
+    ),
     ("/api/v1/contextos-assistenciais", "post"): (
         "criar_contexto_assistencial",
         "ContextoAssistencialResponse",

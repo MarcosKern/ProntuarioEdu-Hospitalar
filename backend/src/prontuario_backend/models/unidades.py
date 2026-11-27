@@ -13,10 +13,14 @@ SELECT_UNIDADES_ATIVAS = SELECT_UNIDADE + WHERE_UNIDADES_ATIVAS
 
 
 def _buscar_por_id(connection, unidade_id):
-    row = connection.execute(
-        text(SELECT_UNIDADE + " WHERE id = :id"),
-        {"id": unidade_id},
-    ).mappings().one_or_none()
+    row = (
+        connection.execute(
+            text(SELECT_UNIDADE + " WHERE id = :id"),
+            {"id": unidade_id},
+        )
+        .mappings()
+        .one_or_none()
+    )
     return dict(row) if row else None
 
 
@@ -31,10 +35,14 @@ def buscar_por_codigo(codigo):
     if not isinstance(codigo, str) or not codigo:
         return None
     with engine().connect() as connection:
-        row = connection.execute(
-            text(SELECT_UNIDADE + " WHERE codigo = :codigo"),
-            {"codigo": codigo},
-        ).mappings().one_or_none()
+        row = (
+            connection.execute(
+                text(SELECT_UNIDADE + " WHERE codigo = :codigo"),
+                {"codigo": codigo},
+            )
+            .mappings()
+            .one_or_none()
+        )
     return dict(row) if row else None
 
 
@@ -42,16 +50,20 @@ def listar_ativas(limite, deslocamento=0):
     _validar_paginacao(limite, deslocamento)
 
     with engine().connect() as connection:
-        rows = connection.execute(
-            text(
-                SELECT_UNIDADES_ATIVAS
-                + """
-                ORDER BY nome, id
-                LIMIT :limite OFFSET :deslocamento
-                """
-            ),
-            {"limite": limite, "deslocamento": deslocamento},
-        ).mappings().all()
+        rows = (
+            connection.execute(
+                text(
+                    SELECT_UNIDADES_ATIVAS
+                    + """
+                    ORDER BY nome, id
+                    LIMIT :limite OFFSET :deslocamento
+                    """
+                ),
+                {"limite": limite, "deslocamento": deslocamento},
+            )
+            .mappings()
+            .all()
+        )
     return [dict(row) for row in rows]
 
 
