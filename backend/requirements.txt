@@ -20,7 +20,7 @@ click==8.5.0
     # via uvicorn
 cryptography==50.0.2
     # via -r requirements.in
-fastapi==0.163.1
+fastapi==0.165.0
     # via -r requirements.in
 h11==0.16.0
     # via uvicorn
@@ -36,12 +36,12 @@ prometheus-client==0.26.0
     # via -r requirements.in
 pycparser==3.12
     # via cffi
-pydantic==2.14.3
+pydantic==2.14.4
     # via
     #   -r requirements.in
     #   fastapi
     #   pydantic-settings
-pydantic-core==2.50.4
+pydantic-core==2.50.5
     # via pydantic
 pydantic-settings==2.16.3
     # via -r requirements.in
@@ -53,7 +53,7 @@ python-dotenv==1.2.4
     # via
     #   -r requirements.in
     #   pydantic-settings
-redis==8.1.0
+redis==8.2.0
     # via -r requirements.in
 sqlalchemy==2.1.9
     # via
