@@ -190,3 +190,51 @@ def medicamentos_schema(mysql_url):
     finally:
         with db.begin() as connection:
             connection.execute(text(f"DROP TABLE IF EXISTS `{table}`"))
+
+
+@pytest.fixture
+def medicamentos(medicamentos_schema):
+    rows = [
+        {
+            "id": str(uuid4()),
+            "nome": "Paracetamol",
+            "principio_ativo": "Paracetamol",
+            "nome_comercial": "Tylenol",
+            "forma_farmaceutica": "Comprimido",
+            "descricao": "Analgesico e antitermico",
+            "ativo": 1,
+        },
+        {
+            "id": str(uuid4()),
+            "nome": "Dipirona",
+            "principio_ativo": "Dipirona sodica",
+            "nome_comercial": "Novalgina",
+            "forma_farmaceutica": "Comprimido",
+            "descricao": "Analgesico e antitermico",
+            "ativo": 1,
+        },
+        {
+            "id": str(uuid4()),
+            "nome": "Amoxicilina",
+            "principio_ativo": "Amoxicilina",
+            "nome_comercial": None,
+            "forma_farmaceutica": "Capsula",
+            "descricao": None,
+            "ativo": 0,
+        },
+    ]
+
+    with medicamentos_schema.begin() as connection:
+        connection.execute(
+            text("""
+                INSERT INTO assistencial__medicamentos
+                    (id, nome, principio_ativo, nome_comercial,
+                    forma_farmaceutica, descricao, ativo)
+                VALUES
+                    (:id, :nome, :principio_ativo, :nome_comercial,
+                    :forma_farmaceutica, :descricao, :ativo)
+            """),
+            rows,
+        )
+
+    return rows
