@@ -28,7 +28,7 @@ cachecontrol==0.14.4
     # via
     #   cachecontrol
     #   pip-audit
-certifi==2026.10.23
+certifi==2026.11.20
     # via
     #   -r requirements-dev.in
     #   httpcore
@@ -160,7 +160,7 @@ requests==2.34.2
     #   pip-audit
 rich==15.0.0
     # via pip-audit
-ruff==0.17.5
+ruff==0.17.6
     # via -r requirements-dev.in
 sortedcontainers==2.4.0
     # via cyclonedx-python-lib
