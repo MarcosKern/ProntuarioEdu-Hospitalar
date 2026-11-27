@@ -23,6 +23,10 @@ def swagger_config(settings: Settings):
                 "description": "Cadastro e consulta de unidades.",
             },
             {
+                "name": "Medicamentos",
+                "description": "Cadastro e consulta do catálogo de medicamentos.",
+            },
+            {
                 "name": "Autenticação",
                 "description": "Login, tokens e sessões da aplicação.",
             },

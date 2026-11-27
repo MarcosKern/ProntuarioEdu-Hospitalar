@@ -14,5 +14,6 @@ ADRs registram contexto, alternativas, decisão, consequências e aprovação. S
 | [0008](0008-mysql-container-desenvolvimento.md) | MySQL opcional em contêiner |
 | [0009](0009-administrador-aplicacao-keycloak.md) | Administrador externo; substituída pela 0010 |
 | [0010](0010-autenticacao-local.md) | Login local/JWT atual, substituindo as decisões anteriores de identidade |
+| [0011](0011-catalogo-medicamentos.md) | Busca literal do catálogo de medicamentos no MySQL |
 
 Para nova decisão, use numeração sequencial e explicite se é proposta, aprovada ou substituída. Referencie a ADR afetada e obtenha a validação aplicável antes de introduzir arquitetura ou dependências. Não apague uma decisão antiga só porque foi substituída.

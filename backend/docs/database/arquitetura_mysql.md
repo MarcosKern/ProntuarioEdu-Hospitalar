@@ -578,6 +578,8 @@ CREATE TABLE `assistencial__medicamentos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 ```
 
+**Busca por nome:** `listar_ativos` procura uma substring literal. Os caracteres `%` e `_` informados na busca não funcionam como curingas.
+
 #### `assistencial__medicamento_contextos`
 
 **Propósito:** Tabela intermediária N:N de disponibilidade e instrução; orientação padrão NÃO é registro de aplicação.
