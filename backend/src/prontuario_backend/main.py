@@ -12,6 +12,9 @@ from prontuario_backend.config.http import SecurityMiddleware
 from prontuario_backend.config.settings import get_settings
 from prontuario_backend.config.swagger import enable_bearer_token_input, swagger_config
 from prontuario_backend.routes.api import router
+from prontuario_backend.routes.contextos_assistenciais import (
+    router as contextos_assistenciais_router,
+)
 from prontuario_backend.routes.unidades import router as unidades_router
 from prontuario_backend.views.errors import error_body
 
@@ -55,6 +58,7 @@ def create_app():
     app.include_router(router)
     if not production:
         app.include_router(unidades_router)
+        app.include_router(contextos_assistenciais_router)
 
         @app.get("/metrics", include_in_schema=False)
         def metrics():
